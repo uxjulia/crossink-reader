@@ -238,7 +238,7 @@ float CrossPointSettings::getReaderLineCompression() const {
         case WIDE:
           return 1.1f;
       }
-    case NOTOSANS:
+    case LEXENDDECA:
       switch (lineSpacing) {
         case TIGHT:
           return 0.90f;
@@ -308,17 +308,17 @@ int CrossPointSettings::getReaderFontId() const {
         case EXTRA_LARGE:
           return BOOKERLY_18_FONT_ID;
       }
-    case NOTOSANS:
+    case LEXENDDECA:
       switch (fontSize) {
         case SMALL:
-          return NOTOSANS_12_FONT_ID;
+          return LEXENDDECA_12_FONT_ID;
         case MEDIUM:
         default:
-          return NOTOSANS_14_FONT_ID;
+          return LEXENDDECA_14_FONT_ID;
         case LARGE:
-          return NOTOSANS_16_FONT_ID;
+          return LEXENDDECA_16_FONT_ID;
         case EXTRA_LARGE:
-          return NOTOSANS_18_FONT_ID;
+          return LEXENDDECA_18_FONT_ID;
       }
     case CHAREINK:
       switch (fontSize) {

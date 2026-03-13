@@ -44,75 +44,39 @@ ruby -rdigest -e 'puts [
 ].map{|f| Digest::SHA256.hexdigest(File.read(f)).to_i(16) }.sum % (2 ** 32) - (2 ** 31)'
 ))"
 
-echo "#define NOTOSANS_12_FONT_ID ($(
+echo "#define LEXENDDECA_12_FONT_ID ($(
 ruby -rdigest -e 'puts [
-  "./notosans_12_regular.h",
-  "./notosans_12_bold.h",
-  "./notosans_12_bolditalic.h",
-  "./notosans_12_italic.h",
+  "./lexenddeca_12_regular.h",
+  "./lexenddeca_12_bold.h",
+  "./lexenddeca_12_bolditalic.h",
+  "./lexenddeca_12_italic.h",
 ].map{|f| Digest::SHA256.hexdigest(File.read(f)).to_i(16) }.sum % (2 ** 32) - (2 ** 31)'
 ))"
 
-echo "#define NOTOSANS_14_FONT_ID ($(
+echo "#define LEXENDDECA_14_FONT_ID ($(
 ruby -rdigest -e 'puts [
-  "./notosans_14_regular.h",
-  "./notosans_14_bold.h",
-  "./notosans_14_bolditalic.h",
-  "./notosans_14_italic.h",
+  "./lexenddeca_14_regular.h",
+  "./lexenddeca_14_bold.h",
+  "./lexenddeca_14_bolditalic.h",
+  "./lexenddeca_14_italic.h",
 ].map{|f| Digest::SHA256.hexdigest(File.read(f)).to_i(16) }.sum % (2 ** 32) - (2 ** 31)'
 ))"
 
-echo "#define NOTOSANS_16_FONT_ID ($(
+echo "#define LEXENDDECA_16_FONT_ID ($(
 ruby -rdigest -e 'puts [
-  "./notosans_16_regular.h",
-  "./notosans_16_bold.h",
-  "./notosans_16_bolditalic.h",
-  "./notosans_16_italic.h",
+  "./lexenddeca_16_regular.h",
+  "./lexenddeca_16_bold.h",
+  "./lexenddeca_16_bolditalic.h",
+  "./lexenddeca_16_italic.h",
 ].map{|f| Digest::SHA256.hexdigest(File.read(f)).to_i(16) }.sum % (2 ** 32) - (2 ** 31)'
 ))"
 
-echo "#define NOTOSANS_18_FONT_ID ($(
+echo "#define LEXENDDECA_18_FONT_ID ($(
 ruby -rdigest -e 'puts [
-  "./notosans_18_regular.h",
-  "./notosans_18_bold.h",
-  "./notosans_18_bolditalic.h",
-  "./notosans_18_italic.h",
-].map{|f| Digest::SHA256.hexdigest(File.read(f)).to_i(16) }.sum % (2 ** 32) - (2 ** 31)'
-))"
-
-echo "#define OPENDYSLEXIC_8_FONT_ID ($(
-ruby -rdigest -e 'puts [
-  "./opendyslexic_8_regular.h",
-  "./opendyslexic_8_bold.h",
-  "./opendyslexic_8_bolditalic.h",
-  "./opendyslexic_8_italic.h",
-].map{|f| Digest::SHA256.hexdigest(File.read(f)).to_i(16) }.sum % (2 ** 32) - (2 ** 31)'
-))"
-
-echo "#define OPENDYSLEXIC_10_FONT_ID ($(
-ruby -rdigest -e 'puts [
-  "./opendyslexic_10_regular.h",
-  "./opendyslexic_10_bold.h",
-  "./opendyslexic_10_bolditalic.h",
-  "./opendyslexic_10_italic.h",
-].map{|f| Digest::SHA256.hexdigest(File.read(f)).to_i(16) }.sum % (2 ** 32) - (2 ** 31)'
-))"
-
-echo "#define OPENDYSLEXIC_12_FONT_ID ($(
-ruby -rdigest -e 'puts [
-  "./opendyslexic_12_regular.h",
-  "./opendyslexic_12_bold.h",
-  "./opendyslexic_12_bolditalic.h",
-  "./opendyslexic_12_italic.h",
-].map{|f| Digest::SHA256.hexdigest(File.read(f)).to_i(16) }.sum % (2 ** 32) - (2 ** 31)'
-))"
-
-echo "#define OPENDYSLEXIC_14_FONT_ID ($(
-ruby -rdigest -e 'puts [
-  "./opendyslexic_14_regular.h",
-  "./opendyslexic_14_bold.h",
-  "./opendyslexic_14_bolditalic.h",
-  "./opendyslexic_14_italic.h",
+  "./lexenddeca_18_regular.h",
+  "./lexenddeca_18_bold.h",
+  "./lexenddeca_18_bolditalic.h",
+  "./lexenddeca_18_italic.h",
 ].map{|f| Digest::SHA256.hexdigest(File.read(f)).to_i(16) }.sum % (2 ** 32) - (2 ** 31)'
 ))"
 
