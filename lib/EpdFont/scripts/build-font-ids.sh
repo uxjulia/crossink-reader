@@ -135,3 +135,39 @@ ruby -rdigest -e 'puts [
   "./notosans_8_regular.h",
 ].map{|f| Digest::SHA256.hexdigest(File.read(f)).to_i(16) }.sum % (2 ** 32) - (2 ** 31)'
 ))"
+
+echo "#define CHAREINK_12_FONT_ID ($(
+ruby -rdigest -e 'puts [
+  "./charein_12_regular.h",
+  "./charein_12_bold.h",
+  "./charein_12_bolditalic.h",
+  "./charein_12_italic.h",
+].map{|f| Digest::SHA256.hexdigest(File.read(f)).to_i(16) }.sum % (2 ** 32) - (2 ** 31)'
+))"
+
+echo "#define CHAREINK_14_FONT_ID ($(
+ruby -rdigest -e 'puts [
+  "./charein_14_regular.h",
+  "./charein_14_bold.h",
+  "./charein_14_bolditalic.h",
+  "./charein_14_italic.h",
+].map{|f| Digest::SHA256.hexdigest(File.read(f)).to_i(16) }.sum % (2 ** 32) - (2 ** 31)'
+))"
+
+echo "#define CHAREINK_16_FONT_ID ($(
+ruby -rdigest -e 'puts [
+  "./charein_16_regular.h",
+  "./charein_16_bold.h",
+  "./charein_16_bolditalic.h",
+  "./charein_16_italic.h",
+].map{|f| Digest::SHA256.hexdigest(File.read(f)).to_i(16) }.sum % (2 ** 32) - (2 ** 31)'
+))"
+
+echo "#define CHAREINK_18_FONT_ID ($(
+ruby -rdigest -e 'puts [
+  "./charein_18_regular.h",
+  "./charein_18_bold.h",
+  "./charein_18_bolditalic.h",
+  "./charein_18_italic.h",
+].map{|f| Digest::SHA256.hexdigest(File.read(f)).to_i(16) }.sum % (2 ** 32) - (2 ** 31)'
+))"

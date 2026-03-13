@@ -52,6 +52,18 @@ for size in ${UI_FONT_SIZES[@]}; do
   done
 done
 
+CHAREINK_FONT_SIZES=(12 14 16 18)
+
+for size in ${CHAREINK_FONT_SIZES[@]}; do
+  for style in ${READER_FONT_STYLES[@]}; do
+    font_name="charein_${size}_$(echo $style | tr '[:upper:]' '[:lower:]')"
+    font_path="../builtinFonts/source/ChareInk/ChareInk-${style}.ttf"
+    output_path="../builtinFonts/${font_name}.h"
+    python fontconvert.py $font_name $size $font_path --2bit --compress > $output_path
+    echo "Generated $output_path"
+  done
+done
+
 python fontconvert.py notosans_8_regular 8 ../builtinFonts/source/NotoSans/NotoSans-Regular.ttf > ../builtinFonts/notosans_8_regular.h
 
 echo ""

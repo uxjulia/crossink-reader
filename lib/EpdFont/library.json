@@ -1,0 +1,8 @@
+{
+  "name": "EpdFont",
+  "srcFilter": [
+    "+<*.cpp>",
+    "+<*.h>",
+    "+<builtinFonts/*.h>"
+  ]
+}
