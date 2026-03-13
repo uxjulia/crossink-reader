@@ -1,5 +1,21 @@
 #pragma once
 
+#include <builtinFonts/atkinsonhl_12_bold.h>
+#include <builtinFonts/atkinsonhl_12_bolditalic.h>
+#include <builtinFonts/atkinsonhl_12_italic.h>
+#include <builtinFonts/atkinsonhl_12_regular.h>
+#include <builtinFonts/atkinsonhl_14_bold.h>
+#include <builtinFonts/atkinsonhl_14_bolditalic.h>
+#include <builtinFonts/atkinsonhl_14_italic.h>
+#include <builtinFonts/atkinsonhl_14_regular.h>
+#include <builtinFonts/atkinsonhl_16_bold.h>
+#include <builtinFonts/atkinsonhl_16_bolditalic.h>
+#include <builtinFonts/atkinsonhl_16_italic.h>
+#include <builtinFonts/atkinsonhl_16_regular.h>
+#include <builtinFonts/atkinsonhl_18_bold.h>
+#include <builtinFonts/atkinsonhl_18_bolditalic.h>
+#include <builtinFonts/atkinsonhl_18_italic.h>
+#include <builtinFonts/atkinsonhl_18_regular.h>
 #include <builtinFonts/charein_12_bold.h>
 #include <builtinFonts/charein_12_bolditalic.h>
 #include <builtinFonts/charein_12_italic.h>

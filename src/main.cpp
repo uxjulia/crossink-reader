@@ -86,6 +86,31 @@ EpdFont charein18ItalicFont(&charein_18_italic);
 EpdFont charein18BoldItalicFont(&charein_18_bolditalic);
 EpdFontFamily charein18FontFamily(&charein18RegularFont, &charein18BoldFont, &charein18ItalicFont,
                                   &charein18BoldItalicFont);
+
+EpdFont atkinsonhl12RegularFont(&atkinsonhl_12_regular);
+EpdFont atkinsonhl12BoldFont(&atkinsonhl_12_bold);
+EpdFont atkinsonhl12ItalicFont(&atkinsonhl_12_italic);
+EpdFont atkinsonhl12BoldItalicFont(&atkinsonhl_12_bolditalic);
+EpdFontFamily atkinsonhl12FontFamily(&atkinsonhl12RegularFont, &atkinsonhl12BoldFont, &atkinsonhl12ItalicFont,
+                                     &atkinsonhl12BoldItalicFont);
+EpdFont atkinsonhl14RegularFont(&atkinsonhl_14_regular);
+EpdFont atkinsonhl14BoldFont(&atkinsonhl_14_bold);
+EpdFont atkinsonhl14ItalicFont(&atkinsonhl_14_italic);
+EpdFont atkinsonhl14BoldItalicFont(&atkinsonhl_14_bolditalic);
+EpdFontFamily atkinsonhl14FontFamily(&atkinsonhl14RegularFont, &atkinsonhl14BoldFont, &atkinsonhl14ItalicFont,
+                                     &atkinsonhl14BoldItalicFont);
+EpdFont atkinsonhl16RegularFont(&atkinsonhl_16_regular);
+EpdFont atkinsonhl16BoldFont(&atkinsonhl_16_bold);
+EpdFont atkinsonhl16ItalicFont(&atkinsonhl_16_italic);
+EpdFont atkinsonhl16BoldItalicFont(&atkinsonhl_16_bolditalic);
+EpdFontFamily atkinsonhl16FontFamily(&atkinsonhl16RegularFont, &atkinsonhl16BoldFont, &atkinsonhl16ItalicFont,
+                                     &atkinsonhl16BoldItalicFont);
+EpdFont atkinsonhl18RegularFont(&atkinsonhl_18_regular);
+EpdFont atkinsonhl18BoldFont(&atkinsonhl_18_bold);
+EpdFont atkinsonhl18ItalicFont(&atkinsonhl_18_italic);
+EpdFont atkinsonhl18BoldItalicFont(&atkinsonhl_18_bolditalic);
+EpdFontFamily atkinsonhl18FontFamily(&atkinsonhl18RegularFont, &atkinsonhl18BoldFont, &atkinsonhl18ItalicFont,
+                                     &atkinsonhl18BoldItalicFont);
 #endif  // OMIT_FONTS
 
 EpdFont smallFont(&notosans_8_regular);
@@ -192,6 +217,11 @@ void setupDisplayAndFonts() {
   renderer.insertFont(CHAREINK_14_FONT_ID, charein14FontFamily);
   renderer.insertFont(CHAREINK_16_FONT_ID, charein16FontFamily);
   renderer.insertFont(CHAREINK_18_FONT_ID, charein18FontFamily);
+
+  renderer.insertFont(ATKINSONHL_12_FONT_ID, atkinsonhl12FontFamily);
+  renderer.insertFont(ATKINSONHL_14_FONT_ID, atkinsonhl14FontFamily);
+  renderer.insertFont(ATKINSONHL_16_FONT_ID, atkinsonhl16FontFamily);
+  renderer.insertFont(ATKINSONHL_18_FONT_ID, atkinsonhl18FontFamily);
 #endif  // OMIT_FONTS
   renderer.insertFont(UI_10_FONT_ID, ui10FontFamily);
   renderer.insertFont(UI_12_FONT_ID, ui12FontFamily);
