@@ -38,7 +38,7 @@ I've removed the "Large" (18pt) font size in favor of a "Tiny" (10pt) font size.
 
 Reader settings (font, size, line spacing, margins, alignment, etc.) are now accessible directly from the in-book menu without leaving the book. Open the menu while reading and select **Reader Options** to adjust any reader setting on the spot. Changes take effect immediately.
 
-### Reading stats
+### Reading stats (Lyra theme only)
 
 Some simple per-book reading stats are tracked automatically and displayed in two places:
 

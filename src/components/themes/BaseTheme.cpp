@@ -543,21 +543,6 @@ void BaseTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std:
       renderer.drawCenteredText(UI_10_FONT_ID, titleYStart, truncatedAuthor.c_str(), !bookSelected);
     }
 
-    // Reading stats (anchored just above "Continue Reading")
-    if (stats != nullptr && stats->sessionCount > 0) {
-      const int statsLineHeight = renderer.getLineHeight(SMALL_FONT_ID);
-      const int statsBottomY = bookY + bookHeight - renderer.getLineHeight(UI_10_FONT_ID) * 3 / 2 - 6;
-      char buf[48];
-      BookReadingStats::formatDuration(stats->totalReadingSeconds, buf, sizeof(buf));
-      char line1[64];
-      snprintf(line1, sizeof(line1), "%s%s", tr(STR_STATS_TOTAL_TIME), buf);
-      renderer.drawCenteredText(SMALL_FONT_ID, statsBottomY - statsLineHeight * 2, line1, !bookSelected);
-      BookReadingStats::formatDuration(stats->totalReadingSeconds / stats->sessionCount, buf, sizeof(buf));
-      char line2[64];
-      snprintf(line2, sizeof(line2), "%s%s", tr(STR_STATS_AVG_SESSION), buf);
-      renderer.drawCenteredText(SMALL_FONT_ID, statsBottomY - statsLineHeight, line2, !bookSelected);
-    }
-
     // "Continue Reading" label at the bottom
     const int continueY = bookY + bookHeight - renderer.getLineHeight(UI_10_FONT_ID) * 3 / 2;
     if (coverRendered) {
