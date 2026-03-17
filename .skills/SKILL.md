@@ -19,7 +19,6 @@ Mission: Provide a lightweight, high-performance reading experience focused on E
 
 - At the start of each session, read any existing files in `.claude/` matching `CONTEXT-*.md` to inform your understanding of the project.
 - When I say "summarize session", create a dated context file at `.claude/CONTEXT-YYYY-MM-DD.md` and populate it with relevant information, code snippets, and references to specific files/lines that will be useful for future sessions.
-- If working on the Simulator, read `.claude/simulator-notes.md` and use it to inform your understanding of this project.
 
 ## Development Environment Awareness
 

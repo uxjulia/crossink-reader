@@ -38,7 +38,7 @@ I've removed the "Large" (18pt) font size in favor of a "Tiny" (10pt) font size.
 
 Reader settings (font, size, line spacing, margins, alignment, etc.) are now accessible directly from the in-book menu without leaving the book. Open the menu while reading and select **Reader Options** to adjust any reader setting on the spot. Changes take effect immediately.
 
-### Reading stats
+### Reading stats (Lyra theme only)
 
 Some simple per-book reading stats are tracked automatically and displayed in two places:
 
@@ -56,7 +56,7 @@ Some simple per-book reading stats are tracked automatically and displayed in tw
 
 ### Development Device Simulator
 
-A device simulator has been added for development purposes to quickly sanity check updates without having to flash the firmware every time. It renders the e-ink display in an SDL2 window.
+A [device simulator](https://github.com/uxjulia/crosspoint-simulator) has been added for development purposes to quickly sanity check updates without having to flash the firmware every time. It renders the e-ink display in an SDL2 window.
 
 > **Platform support:** The simulator is currently configured for **macOS (Apple Silicon)** only. The `platformio.ini` `[env:simulator]` section contains hardcoded `-arch arm64` and Homebrew paths (`/opt/homebrew`). Intel Mac users need to remove `-arch arm64` and change those paths to `/usr/local`. Linux requires the same path changes plus a replacement for `lib/simulator_mock/src/MD5Builder.h` (which uses the macOS-only `CommonCrypto` API). Native Windows is not supported; use WSL and follow the Linux instructions.
 
