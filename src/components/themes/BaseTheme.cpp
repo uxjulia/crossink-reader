@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <string>
+#include <time.h>
 
 #include "I18n.h"
 #include "RecentBooksStore.h"
@@ -17,6 +18,9 @@
 // Internal constants
 namespace {
 constexpr int batteryPercentSpacing = 4;
+// Minimum Unix timestamp considered valid (2024-01-01 UTC).
+// Used to guard clock display against unsynced devices.
+constexpr uint32_t CLOCK_VALID_EPOCH_MIN = 1704067200UL;
 constexpr int homeMenuMargin = 20;
 constexpr int homeMarginTop = 30;
 constexpr int subtitleY = 738;
@@ -266,6 +270,25 @@ void BaseTheme::drawHeader(const GfxRenderer& renderer, Rect rect, const char* t
   drawBatteryRight(renderer,
                    Rect{batteryX, rect.y + 5, BaseMetrics::values.batteryWidth, BaseMetrics::values.batteryHeight},
                    showBatteryPercentage);
+
+  // Draw clock at top-left when time is synced and not suppressed
+  if (SETTINGS.hideClockDisplay != CrossPointSettings::HIDE_BATTERY_PERCENTAGE::HIDE_ALWAYS) {
+    const time_t now = time(nullptr);
+    if (static_cast<uint32_t>(now) >= CLOCK_VALID_EPOCH_MIN) {
+      const struct tm* t = localtime(&now);
+      char clockStr[8];
+      if (SETTINGS.clockFormat == CrossPointSettings::CLOCK_12H) {
+        int h = t->tm_hour;
+        const char* period = (h >= 12) ? "p" : "a";
+        if (h > 12) h -= 12;
+        if (h == 0) h = 12;
+        snprintf(clockStr, sizeof(clockStr), "%d:%02d%s", h, t->tm_min, period);
+      } else {
+        snprintf(clockStr, sizeof(clockStr), "%02d:%02d", t->tm_hour, t->tm_min);
+      }
+      renderer.drawText(SMALL_FONT_ID, rect.x + BaseMetrics::values.contentSidePadding, rect.y + 5, clockStr, true);
+    }
+  }
 
   if (title) {
     int padding = rect.width - batteryX + BaseMetrics::values.batteryWidth;
@@ -643,8 +666,34 @@ void BaseTheme::drawStatusBar(GfxRenderer& renderer, const float bookProgress, c
   auto textY = screenHeight - UITheme::getInstance().getStatusBarHeight() - orientedMarginBottom - paddingBottom - 4;
   int progressTextWidth = 0;
 
+  // Compute battery size early (needed for clock and title positioning)
+  const bool showBatteryPercentage =
+      SETTINGS.hideBatteryPercentage == CrossPointSettings::HIDE_BATTERY_PERCENTAGE::HIDE_NEVER;
+  const int batterySize = SETTINGS.statusBarBattery ? (showBatteryPercentage ? 50 : 20) : 0;
+
+  // Compute clock string and width (shown in reader when statusBarClock is on and time is valid)
+  char clockStr[8] = "";
+  int clockWidth = 0;
+  if (SETTINGS.statusBarClock &&
+      SETTINGS.hideClockDisplay != CrossPointSettings::HIDE_BATTERY_PERCENTAGE::HIDE_ALWAYS) {
+    const time_t now = time(nullptr);
+    if (static_cast<uint32_t>(now) >= CLOCK_VALID_EPOCH_MIN) {
+      const struct tm* t = localtime(&now);
+      if (SETTINGS.clockFormat == CrossPointSettings::CLOCK_12H) {
+        int h = t->tm_hour;
+        const char* period = (h >= 12) ? "p" : "a";
+        if (h > 12) h -= 12;
+        if (h == 0) h = 12;
+        snprintf(clockStr, sizeof(clockStr), "%d:%02d%s", h, t->tm_min, period);
+      } else {
+        snprintf(clockStr, sizeof(clockStr), "%02d:%02d", t->tm_hour, t->tm_min);
+      }
+      clockWidth = renderer.getTextWidth(SMALL_FONT_ID, clockStr) + 5;  // +5px gap
+    }
+  }
+
   if (SETTINGS.statusBarBookProgressPercentage || SETTINGS.statusBarChapterPageCount) {
-    // Right aligned text for progress counter
+    // Right aligned progress text
     char progressStr[32];
 
     if (SETTINGS.statusBarBookProgressPercentage && SETTINGS.statusBarChapterPageCount) {
@@ -656,10 +705,10 @@ void BaseTheme::drawStatusBar(GfxRenderer& renderer, const float bookProgress, c
     }
 
     progressTextWidth = renderer.getTextWidth(SMALL_FONT_ID, progressStr);
-    renderer.drawText(
-        SMALL_FONT_ID,
-        renderer.getScreenWidth() - metrics.statusBarHorizontalMargin - orientedMarginRight - progressTextWidth, textY,
-        progressStr);
+    renderer.drawText(SMALL_FONT_ID,
+                      renderer.getScreenWidth() - metrics.statusBarHorizontalMargin - orientedMarginRight -
+                          progressTextWidth,
+                      textY, progressStr);
   }
 
   // Draw Progress Bar
@@ -680,13 +729,18 @@ void BaseTheme::drawStatusBar(GfxRenderer& renderer, const float bookProgress, c
   }
 
   // Draw Battery
-  const bool showBatteryPercentage =
-      SETTINGS.hideBatteryPercentage == CrossPointSettings::HIDE_BATTERY_PERCENTAGE::HIDE_NEVER;
   if (SETTINGS.statusBarBattery) {
     GUI.drawBatteryLeft(renderer,
                         Rect{metrics.statusBarHorizontalMargin + orientedMarginLeft + 1, textY, metrics.batteryWidth,
                              metrics.batteryHeight},
                         showBatteryPercentage);
+  }
+
+  // Draw Clock on left side, immediately to the right of the battery
+  if (clockWidth > 0) {
+    const int clockX = metrics.statusBarHorizontalMargin + orientedMarginLeft + 1 +
+                       (batterySize > 0 ? batterySize + 5 : 0);
+    renderer.drawText(SMALL_FONT_ID, clockX, textY, clockStr);
   }
 
   // Draw Title
@@ -697,8 +751,7 @@ void BaseTheme::drawStatusBar(GfxRenderer& renderer, const float bookProgress, c
     const int rendererableScreenWidth =
         renderer.getScreenWidth() - (metrics.statusBarHorizontalMargin * 2) - orientedMarginLeft - orientedMarginRight;
 
-    const int batterySize = SETTINGS.statusBarBattery ? (showBatteryPercentage ? 50 : 20) : 0;
-    const int titleMarginLeft = batterySize + 30;
+    const int titleMarginLeft = batterySize + (clockWidth > 0 ? clockWidth + 5 : 0) + 30;
     const int titleMarginRight = progressTextWidth + 30;
 
     // Attempt to center title on the screen, but if title is too wide then later we will center it within the

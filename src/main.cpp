@@ -18,6 +18,7 @@
 #include "CrossPointSettings.h"
 #include "CrossPointState.h"
 #include "KOReaderCredentialStore.h"
+#include "TimeStore.h"
 #include "MappedInputManager.h"
 #include "RecentBooksStore.h"
 #include "activities/Activity.h"
@@ -283,10 +284,15 @@ void setup() {
     return;
   }
 
+  // Restore the system clock from the last NTP-synced timestamp so that
+  // date-aware features (e.g. reading streak) work without a fresh WiFi sync.
+  TimeStore::restore();
+
   HalSystem::checkPanic();
   HalSystem::clearPanic();  // TODO: move this to an activity when we have one to display the panic info
 
   SETTINGS.loadFromFile();
+  TimeStore::applyTimezone();
   I18N.loadSettings();
   KOREADER_STORE.loadFromFile();
   UITheme::getInstance().reload();
@@ -395,6 +401,9 @@ void loop() {
     LOG_DBG("SLP", "Auto-sleep triggered after %lu ms of inactivity", sleepTimeoutMs);
     enterDeepSleep();
     // This should never be hit as `enterDeepSleep` calls esp_deep_sleep_start
+    // In the simulator, deep sleep is a no-op and returns — reset the timer so
+    // the main loop does not immediately re-trigger auto-sleep.
+    lastActivityTime = millis();
     return;
   }
 
@@ -405,6 +414,7 @@ void loop() {
     }
     enterDeepSleep();
     // This should never be hit as `enterDeepSleep` calls esp_deep_sleep_start
+    lastActivityTime = millis();
     return;
   }
 

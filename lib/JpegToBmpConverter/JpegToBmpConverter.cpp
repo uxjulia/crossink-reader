@@ -203,18 +203,25 @@ unsigned char JpegToBmpConverter::jpegReadCallback(unsigned char* pBuf, const un
 // JPEGDEC-based fallback for progressive JPEGs (unsupported by picojpeg)
 // ============================================================================
 
-// File-scope pointer used by the JPEGDEC open callback to hand back the
-// already-open FsFile.  Set/cleared only on the main task (cover generation
-// is never called concurrently), so no synchronisation is needed.
-static FsFile* s_jpegDecFallbackFile = nullptr;
-
-static void* jpegDecBmpFileOpen(const char* /*filename*/, int32_t* size) {
-  if (!s_jpegDecFallbackFile) return nullptr;
-  if (!s_jpegDecFallbackFile->seekSet(0)) return nullptr;
-  *size = static_cast<int32_t>(s_jpegDecFallbackFile->size());
-  return s_jpegDecFallbackFile;
+// Opens a fresh read-only FsFile by path so JPEGDEC gets an uncontaminated
+// file handle.  The existing FsFile (partially consumed by picojpeg) is not
+// reused — attempting seekSet(0) on it is unreliable after picojpeg reads
+// ahead to detect the SOF2 marker.
+static void* jpegDecBmpFileOpen(const char* filename, int32_t* size) {
+  FsFile* f = new (std::nothrow) FsFile();
+  if (!f) return nullptr;
+  if (!Storage.openFileForRead("JPG", std::string(filename), *f)) {
+    delete f;
+    return nullptr;
+  }
+  *size = static_cast<int32_t>(f->size());
+  return f;
 }
-static void jpegDecBmpFileClose(void* /*handle*/) { /* caller owns the file */ }
+static void jpegDecBmpFileClose(void* handle) {
+  FsFile* f = static_cast<FsFile*>(handle);
+  f->close();
+  delete f;
+}
 static int32_t jpegDecBmpFileRead(JPEGFILE* pFile, uint8_t* buf, int32_t len) {
   FsFile* f = static_cast<FsFile*>(pFile->fHandle);
   int32_t n = f->read(buf, len);
@@ -295,28 +302,30 @@ static int jpegDecBmpDrawCallback(JPEGDRAW* pDraw) {
 // Decodes a progressive (or any) JPEG to BMP using JPEGDEC when picojpeg
 // has rejected the file.  Progressive JPEGs are decoded at 1/8 resolution
 // (DC coefficients only), which is then scaled to the target dimensions.
-static bool jpegFileToBmpStreamViaJpegDec(FsFile& jpegFile, Print& bmpOut, int targetWidth, int targetHeight,
+static bool jpegFileToBmpStreamViaJpegDec(const char* filePath, Print& bmpOut, int targetWidth, int targetHeight,
                                           bool oneBit) {
+  if (!filePath) {
+    LOG_ERR("JPG", "JPEGDEC fallback: no file path provided");
+    return false;
+  }
   constexpr size_t MIN_FREE_HEAP = 28 * 1024;  // ~20 KB decoder + 8 KB headroom
   if (ESP.getFreeHeap() < MIN_FREE_HEAP) {
     LOG_ERR("JPG", "Not enough heap for JPEGDEC fallback (%u free)", ESP.getFreeHeap());
     return false;
   }
 
-  s_jpegDecFallbackFile = &jpegFile;
   JPEGDEC* jpeg = new (std::nothrow) JPEGDEC();
   if (!jpeg) {
-    s_jpegDecFallbackFile = nullptr;
     LOG_ERR("JPG", "JPEGDEC fallback: failed to allocate decoder");
     return false;
   }
 
-  int rc = jpeg->open("", jpegDecBmpFileOpen, jpegDecBmpFileClose, jpegDecBmpFileRead, jpegDecBmpFileSeek,
+  // Pass filePath as the filename so jpegDecBmpFileOpen can open a fresh handle
+  int rc = jpeg->open(filePath, jpegDecBmpFileOpen, jpegDecBmpFileClose, jpegDecBmpFileRead, jpegDecBmpFileSeek,
                       jpegDecBmpDrawCallback);
   if (rc != 1) {
     LOG_ERR("JPG", "JPEGDEC fallback: open failed (err=%d)", jpeg->getLastError());
     delete jpeg;
-    s_jpegDecFallbackFile = nullptr;
     return false;
   }
 
@@ -383,7 +392,6 @@ static bool jpegFileToBmpStreamViaJpegDec(FsFile& jpegFile, Print& bmpOut, int t
     LOG_ERR("JPG", "JPEGDEC fallback: failed to alloc row buffer");
     jpeg->close();
     delete jpeg;
-    s_jpegDecFallbackFile = nullptr;
     return false;
   }
   memset(rowBuffer, 0, bytesPerRow);
@@ -426,7 +434,6 @@ static bool jpegFileToBmpStreamViaJpegDec(FsFile& jpegFile, Print& bmpOut, int t
   delete atkinson1BitDitherer;
   jpeg->close();
   delete jpeg;
-  s_jpegDecFallbackFile = nullptr;
 
   if (!success) {
     LOG_ERR("JPG", "JPEGDEC fallback: decode failed");
@@ -438,7 +445,7 @@ static bool jpegFileToBmpStreamViaJpegDec(FsFile& jpegFile, Print& bmpOut, int t
 
 // Internal implementation with configurable target size and bit depth
 bool JpegToBmpConverter::jpegFileToBmpStreamInternal(FsFile& jpegFile, Print& bmpOut, int targetWidth, int targetHeight,
-                                                     bool oneBit, bool crop) {
+                                                     bool oneBit, bool crop, const char* filePath) {
   LOG_DBG("JPG", "Converting JPEG to %s BMP (target: %dx%d)", oneBit ? "1-bit" : "2-bit", targetWidth, targetHeight);
 
   // Setup context for picojpeg callback
@@ -451,8 +458,11 @@ bool JpegToBmpConverter::jpegFileToBmpStreamInternal(FsFile& jpegFile, Print& bm
     if (status == PJPG_UNSUPPORTED_MODE) {
       // Progressive JPEG — picojpeg doesn't support these.  Fall back to JPEGDEC
       // which decodes progressive files using DC coefficients at 1/8 resolution.
+      // Close the existing handle first: SdFat will not allow a second reader
+      // on the same file while one is already open.
       LOG_INF("JPG", "Progressive JPEG detected, using JPEGDEC fallback decoder");
-      return jpegFileToBmpStreamViaJpegDec(jpegFile, bmpOut, targetWidth, targetHeight, oneBit);
+      jpegFile.close();
+      return jpegFileToBmpStreamViaJpegDec(filePath, bmpOut, targetWidth, targetHeight, oneBit);
     }
     LOG_ERR("JPG", "JPEG decode init failed with error code: %d", status);
     return false;
@@ -802,18 +812,18 @@ bool JpegToBmpConverter::jpegFileToBmpStreamInternal(FsFile& jpegFile, Print& bm
 }
 
 // Core function: Convert JPEG file to 2-bit BMP (uses default target size)
-bool JpegToBmpConverter::jpegFileToBmpStream(FsFile& jpegFile, Print& bmpOut, bool crop) {
-  return jpegFileToBmpStreamInternal(jpegFile, bmpOut, TARGET_MAX_WIDTH, TARGET_MAX_HEIGHT, false, crop);
+bool JpegToBmpConverter::jpegFileToBmpStream(FsFile& jpegFile, Print& bmpOut, const char* filePath, bool crop) {
+  return jpegFileToBmpStreamInternal(jpegFile, bmpOut, TARGET_MAX_WIDTH, TARGET_MAX_HEIGHT, false, crop, filePath);
 }
 
 // Convert with custom target size (for thumbnails, 2-bit)
-bool JpegToBmpConverter::jpegFileToBmpStreamWithSize(FsFile& jpegFile, Print& bmpOut, int targetMaxWidth,
-                                                     int targetMaxHeight) {
-  return jpegFileToBmpStreamInternal(jpegFile, bmpOut, targetMaxWidth, targetMaxHeight, false);
+bool JpegToBmpConverter::jpegFileToBmpStreamWithSize(FsFile& jpegFile, Print& bmpOut, const char* filePath,
+                                                     int targetMaxWidth, int targetMaxHeight) {
+  return jpegFileToBmpStreamInternal(jpegFile, bmpOut, targetMaxWidth, targetMaxHeight, false, true, filePath);
 }
 
 // Convert to 1-bit BMP (black and white only, no grays) for fast home screen rendering
-bool JpegToBmpConverter::jpegFileTo1BitBmpStreamWithSize(FsFile& jpegFile, Print& bmpOut, int targetMaxWidth,
-                                                         int targetMaxHeight) {
-  return jpegFileToBmpStreamInternal(jpegFile, bmpOut, targetMaxWidth, targetMaxHeight, true, true);
+bool JpegToBmpConverter::jpegFileTo1BitBmpStreamWithSize(FsFile& jpegFile, Print& bmpOut, const char* filePath,
+                                                         int targetMaxWidth, int targetMaxHeight) {
+  return jpegFileToBmpStreamInternal(jpegFile, bmpOut, targetMaxWidth, targetMaxHeight, true, true, filePath);
 }
