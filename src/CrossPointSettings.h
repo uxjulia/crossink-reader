@@ -136,6 +136,13 @@ class CrossPointSettings {
   // UI Theme
   enum UI_THEME { CLASSIC = 0, LYRA = 1, LYRA_3_COVERS = 2 };
 
+  // Clock display format
+  enum CLOCK_FORMAT { CLOCK_24H = 0, CLOCK_12H = 1, CLOCK_FORMAT_COUNT };
+
+  // Timezone offset index: 0 = UTC-12, 12 = UTC+0, 26 = UTC+14 (whole hours only).
+  // Apply via TimeStore::applyTimezone() after loading settings or changing this value.
+  static constexpr uint8_t TIMEZONE_UTC0_INDEX = 12;
+
   // Image rendering in EPUB reader
   enum IMAGE_RENDERING { IMAGES_DISPLAY = 0, IMAGES_PLACEHOLDER = 1, IMAGES_SUPPRESS = 2, IMAGE_RENDERING_COUNT };
 
@@ -153,6 +160,7 @@ class CrossPointSettings {
   uint8_t statusBarProgressBarThickness = PROGRESS_BAR_NORMAL;
   uint8_t statusBarTitle = CHAPTER_TITLE;
   uint8_t statusBarBattery = 1;
+  uint8_t statusBarClock = 1;
   // Text rendering settings
   uint8_t extraParagraphSpacing = 1;
   uint8_t textAntiAliasing = 1;
@@ -189,6 +197,12 @@ class CrossPointSettings {
   char opdsPassword[64] = "";
   // Hide battery percentage
   uint8_t hideBatteryPercentage = HIDE_NEVER;
+  // Hide clock display (reuses HIDE_BATTERY_PERCENTAGE enum: HIDE_NEVER / HIDE_READER / HIDE_ALWAYS)
+  uint8_t hideClockDisplay = HIDE_NEVER;
+  // Clock display format (0 = 24h, 1 = 12h)
+  uint8_t clockFormat = CLOCK_24H;
+  // Timezone offset index (0 = UTC-12, 12 = UTC+0, 26 = UTC+14)
+  uint8_t timezoneIndex = TIMEZONE_UTC0_INDEX;
   // Long-press chapter skip on side buttons
   uint8_t longPressChapterSkip = 1;
   // UI Theme
