@@ -26,11 +26,6 @@ inline const std::vector<SettingInfo>& getSettingsList() {
       SettingInfo::Enum(StrId::STR_HIDE_BATTERY, &CrossPointSettings::hideBatteryPercentage,
                         {StrId::STR_NEVER, StrId::STR_IN_READER, StrId::STR_ALWAYS}, "hideBatteryPercentage",
                         StrId::STR_CAT_DISPLAY),
-      SettingInfo::Enum(StrId::STR_HIDE_CLOCK, &CrossPointSettings::hideClockDisplay,
-                        {StrId::STR_NEVER, StrId::STR_IN_READER, StrId::STR_ALWAYS}, "hideClockDisplay",
-                        StrId::STR_CAT_DISPLAY),
-      SettingInfo::Enum(StrId::STR_CLOCK_FORMAT, &CrossPointSettings::clockFormat,
-                        {StrId::STR_24H, StrId::STR_12H}, "clockFormat", StrId::STR_CAT_DISPLAY),
       SettingInfo::Enum(
           StrId::STR_REFRESH_FREQ, &CrossPointSettings::refreshFrequency,
           {StrId::STR_PAGES_1, StrId::STR_PAGES_5, StrId::STR_PAGES_10, StrId::STR_PAGES_15, StrId::STR_PAGES_30},
@@ -94,15 +89,6 @@ inline const std::vector<SettingInfo>& getSettingsList() {
                         "sleepTimeout", StrId::STR_CAT_SYSTEM),
       SettingInfo::Toggle(StrId::STR_SHOW_HIDDEN_FILES, &CrossPointSettings::showHiddenFiles, "showHiddenFiles",
                           StrId::STR_CAT_SYSTEM),
-      SettingInfo::Enum(
-          StrId::STR_TIMEZONE, &CrossPointSettings::timezoneIndex,
-          {StrId::STR_UTC_M12, StrId::STR_UTC_M11, StrId::STR_UTC_M10, StrId::STR_UTC_M9, StrId::STR_UTC_M8,
-           StrId::STR_UTC_M7, StrId::STR_UTC_M6, StrId::STR_UTC_M5, StrId::STR_UTC_M4, StrId::STR_UTC_M3,
-           StrId::STR_UTC_M2, StrId::STR_UTC_M1, StrId::STR_UTC_0, StrId::STR_UTC_P1, StrId::STR_UTC_P2,
-           StrId::STR_UTC_P3, StrId::STR_UTC_P4, StrId::STR_UTC_P5, StrId::STR_UTC_P6, StrId::STR_UTC_P7,
-           StrId::STR_UTC_P8, StrId::STR_UTC_P9, StrId::STR_UTC_P10, StrId::STR_UTC_P11, StrId::STR_UTC_P12,
-           StrId::STR_UTC_P13, StrId::STR_UTC_P14},
-          "timezoneIndex", StrId::STR_CAT_SYSTEM),
 
       // --- KOReader Sync (web-only, uses KOReaderCredentialStore) ---
       SettingInfo::DynamicString(
@@ -158,8 +144,6 @@ inline const std::vector<SettingInfo>& getSettingsList() {
                         {StrId::STR_BOOK, StrId::STR_CHAPTER, StrId::STR_HIDE}, "statusBarTitle",
                         StrId::STR_CUSTOMISE_STATUS_BAR),
       SettingInfo::Toggle(StrId::STR_BATTERY, &CrossPointSettings::statusBarBattery, "statusBarBattery",
-                          StrId::STR_CUSTOMISE_STATUS_BAR),
-      SettingInfo::Toggle(StrId::STR_CLOCK, &CrossPointSettings::statusBarClock, "statusBarClock",
                           StrId::STR_CUSTOMISE_STATUS_BAR),
   };
   return list;

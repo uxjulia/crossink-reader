@@ -74,26 +74,18 @@ void BookStatsActivity::render(RenderLock&&) {
                     EpdFontFamily::BOLD);
   y += sectionHeaderH;
 
-  const int quarterW = screenWidth / 4;
+  const int thirdW = screenWidth / 3;
 
   snprintf(buf, sizeof(buf), "%u", static_cast<unsigned>(stats.sessionCount));
-  drawStatCell(0, quarterW, buf, tr(STR_STATS_SESSIONS_LBL));
-  renderer.drawLine(quarterW, y + 12, quarterW, y + cellH - 12, true);
+  drawStatCell(0, thirdW, buf, tr(STR_STATS_SESSIONS_LBL));
+  renderer.drawLine(thirdW, y + 12, thirdW, y + cellH - 12, true);
 
   BookReadingStats::formatDuration(stats.totalReadingSeconds, buf, sizeof(buf));
-  drawStatCell(quarterW, quarterW, buf, tr(STR_STATS_TIME_LBL));
-  renderer.drawLine(quarterW * 2, y + 12, quarterW * 2, y + cellH - 12, true);
+  drawStatCell(thirdW, thirdW, buf, tr(STR_STATS_TIME_LBL));
+  renderer.drawLine(thirdW * 2, y + 12, thirdW * 2, y + cellH - 12, true);
 
   snprintf(buf, sizeof(buf), "%lu", static_cast<unsigned long>(stats.totalPagesTurned));
-  drawStatCell(quarterW * 2, quarterW, buf, tr(STR_STATS_PAGES_LBL));
-  renderer.drawLine(quarterW * 3, y + 12, quarterW * 3, y + cellH - 12, true);
-
-  if (stats.lastReadTimestamp > 0) {
-    snprintf(buf, sizeof(buf), "%u", static_cast<unsigned>(stats.currentStreak));
-  } else {
-    snprintf(buf, sizeof(buf), "--");
-  }
-  drawStatCell(quarterW * 3, quarterW, buf, tr(STR_STATS_STREAK_LBL));
+  drawStatCell(thirdW * 2, thirdW, buf, tr(STR_STATS_PAGES_LBL));
 
   y += cellH;
   renderer.drawLine(0, y, screenWidth, y, true);

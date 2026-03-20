@@ -82,11 +82,10 @@ void EpubReaderActivity::onEnter() {
     }
   }
 
-  // Load reading stats, increment session count, update streak, and record start.
+  // Load reading stats, increment session count, and record session start time.
   // Stats are saved immediately so the session is counted even if the device crashes.
   stats = BookReadingStats::load(epub->getCachePath());
   stats.sessionCount++;
-  stats.updateStreak();
   sessionStartMs = millis();
   stats.save(epub->getCachePath());
 

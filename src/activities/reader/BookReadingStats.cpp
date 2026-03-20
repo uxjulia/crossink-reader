@@ -3,48 +3,16 @@
 #include <HalStorage.h>
 #include <I18n.h>
 #include <Logging.h>
-#include <time.h>
 
 namespace {
-// Binary layout (17 bytes):
-//   [0]     version (= 2)
+// Binary layout (11 bytes):
+//   [0]     version (= 1)
 //   [1-2]   sessionCount        uint16_t LE
 //   [3-6]   totalReadingSeconds uint32_t LE
 //   [7-10]  totalPagesTurned    uint32_t LE
-//   [11-12] currentStreak       uint16_t LE
-//   [13-16] lastReadTimestamp   uint32_t LE
-static constexpr uint8_t STATS_FILE_VERSION = 2;
-static constexpr int STATS_FILE_SIZE = 17;
+static constexpr uint8_t STATS_FILE_VERSION = 1;
+static constexpr int STATS_FILE_SIZE = 11;
 }  // namespace
-
-void BookReadingStats::updateStreak() {
-  // Minimum Unix timestamp considered valid: 2024-01-01 00:00:00 UTC.
-  // Without NTP, the ESP32 starts near epoch 0, so we skip the update rather
-  // than corrupt the streak with a bogus date.
-  constexpr uint32_t VALID_EPOCH_MIN = 1704067200UL;
-  const auto now = static_cast<uint32_t>(time(nullptr));
-  if (now < VALID_EPOCH_MIN) {
-    LOG_DBG("STATS", "System time not synced, streak unchanged");
-    return;
-  }
-
-  const uint32_t todayDays = now / 86400u;
-  if (lastReadTimestamp == 0) {
-    currentStreak = 1;
-  } else {
-    const uint32_t lastDays = lastReadTimestamp / 86400u;
-    if (todayDays == lastDays) {
-      // Already read today — no change
-    } else if (todayDays == lastDays + 1u) {
-      currentStreak++;
-    } else {
-      // Gap of more than one day — reset
-      currentStreak = 1;
-    }
-  }
-
-  lastReadTimestamp = now;
-}
 
 BookReadingStats BookReadingStats::load(const std::string& cachePath) {
   BookReadingStats stats;
@@ -64,9 +32,6 @@ BookReadingStats BookReadingStats::load(const std::string& cachePath) {
                               (static_cast<uint32_t>(data[5]) << 16) | (static_cast<uint32_t>(data[6]) << 24);
   stats.totalPagesTurned = static_cast<uint32_t>(data[7]) | (static_cast<uint32_t>(data[8]) << 8) |
                            (static_cast<uint32_t>(data[9]) << 16) | (static_cast<uint32_t>(data[10]) << 24);
-  stats.currentStreak = static_cast<uint16_t>(data[11]) | (static_cast<uint16_t>(data[12]) << 8);
-  stats.lastReadTimestamp = static_cast<uint32_t>(data[13]) | (static_cast<uint32_t>(data[14]) << 8) |
-                            (static_cast<uint32_t>(data[15]) << 16) | (static_cast<uint32_t>(data[16]) << 24);
   return stats;
 }
 
@@ -102,12 +67,6 @@ void BookReadingStats::save(const std::string& cachePath) const {
   data[8] = (totalPagesTurned >> 8) & 0xFF;
   data[9] = (totalPagesTurned >> 16) & 0xFF;
   data[10] = (totalPagesTurned >> 24) & 0xFF;
-  data[11] = currentStreak & 0xFF;
-  data[12] = (currentStreak >> 8) & 0xFF;
-  data[13] = lastReadTimestamp & 0xFF;
-  data[14] = (lastReadTimestamp >> 8) & 0xFF;
-  data[15] = (lastReadTimestamp >> 16) & 0xFF;
-  data[16] = (lastReadTimestamp >> 24) & 0xFF;
   f.write(data, STATS_FILE_SIZE);
   f.close();
 }

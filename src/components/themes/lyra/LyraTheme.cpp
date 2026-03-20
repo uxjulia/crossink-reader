@@ -7,7 +7,6 @@
 
 #include <cstdint>
 #include <string>
-#include <time.h>
 #include <vector>
 
 #include "RecentBooksStore.h"
@@ -32,7 +31,6 @@
 // Internal constants
 namespace {
 constexpr int batteryPercentSpacing = 4;
-constexpr uint32_t CLOCK_VALID_EPOCH_MIN = 1704067200UL;
 constexpr int hPaddingInSelection = 8;
 constexpr int cornerRadius = 6;
 constexpr int topHintButtonY = 345;
@@ -176,25 +174,6 @@ void LyraTheme::drawHeader(const GfxRenderer& renderer, Rect rect, const char* t
   drawBatteryRight(renderer,
                    Rect{batteryX, rect.y + 5, LyraMetrics::values.batteryWidth, LyraMetrics::values.batteryHeight},
                    showBatteryPercentage);
-
-  // Draw clock at top-left when time is synced and not suppressed
-  if (SETTINGS.hideClockDisplay != CrossPointSettings::HIDE_BATTERY_PERCENTAGE::HIDE_ALWAYS) {
-    const time_t now = time(nullptr);
-    if (static_cast<uint32_t>(now) >= CLOCK_VALID_EPOCH_MIN) {
-      const struct tm* t = localtime(&now);
-      char clockStr[8];
-      if (SETTINGS.clockFormat == CrossPointSettings::CLOCK_12H) {
-        int h = t->tm_hour;
-        const char* period = (h >= 12) ? "p" : "a";
-        if (h > 12) h -= 12;
-        if (h == 0) h = 12;
-        snprintf(clockStr, sizeof(clockStr), "%d:%02d%s", h, t->tm_min, period);
-      } else {
-        snprintf(clockStr, sizeof(clockStr), "%02d:%02d", t->tm_hour, t->tm_min);
-      }
-      renderer.drawText(SMALL_FONT_ID, rect.x + LyraMetrics::values.contentSidePadding, rect.y + 5, clockStr, true);
-    }
-  }
 
   int maxTitleWidth =
       rect.width - LyraMetrics::values.contentSidePadding * 2 - (subtitle != nullptr ? maxSubtitleWidth : 0);
