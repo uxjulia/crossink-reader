@@ -21,7 +21,6 @@ enum class SettingAction {
   ClearCache,
   CheckForUpdates,
   Language,
-  SyncClock,
 };
 
 struct SettingInfo {

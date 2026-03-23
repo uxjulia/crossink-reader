@@ -19,7 +19,6 @@
 #include "CrossPointState.h"
 #include "KOReaderCredentialStore.h"
 #include "MappedInputManager.h"
-#include "TimeStore.h"
 #include "RecentBooksStore.h"
 #include "activities/Activity.h"
 #include "activities/ActivityManager.h"
@@ -209,10 +208,6 @@ void enterDeepSleep() {
   APP_STATE.lastSleepFromReader = activityManager.isReaderActivity();
   APP_STATE.saveToFile();
 
-  // Save unix timestamp + LP timer counter before sleep so restore() can compute
-  // exact elapsed time on wake without requiring a WiFi NTP sync.
-  TimeStore::saveBeforeSleep();
-
   activityManager.goToSleep();
 
   display.deepSleep();
@@ -288,15 +283,10 @@ void setup() {
     return;
   }
 
-  // Restore the system clock from the LP timer delta (deep sleep) or SD backup (power-off).
-  // Must be called after Storage.begin() so the SD fallback path is available.
-  TimeStore::restore();
-
   HalSystem::checkPanic();
   HalSystem::clearPanic();  // TODO: move this to an activity when we have one to display the panic info
 
   SETTINGS.loadFromFile();
-  TimeStore::applyTimezone();
   I18N.loadSettings();
   KOREADER_STORE.loadFromFile();
   UITheme::getInstance().reload();
