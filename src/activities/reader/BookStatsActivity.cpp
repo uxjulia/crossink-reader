@@ -115,23 +115,6 @@ void BookStatsActivity::render(RenderLock&&) {
 
   y += cellH;
   renderer.drawLine(0, y, screenWidth, y, true);
-  y += metrics.verticalSpacing;
-
-  // ─── Section 3: "STREAK" ───────────────────────────────────────────────────
-  renderer.fillRect(0, y, screenWidth, sectionHeaderH);
-  renderer.drawText(UI_10_FONT_ID, metrics.contentSidePadding, y + 9, tr(STR_STATS_STREAK), false,
-                    EpdFontFamily::BOLD);
-  y += sectionHeaderH;
-
-  snprintf(buf, sizeof(buf), "%lu", static_cast<unsigned long>(stats.currentStreak));
-  drawStatCell(0, halfW, buf, tr(STR_STATS_STREAK_CURRENT));
-  renderer.drawLine(halfW, y + 12, halfW, y + cellH - 12, true);
-
-  snprintf(buf, sizeof(buf), "%lu", static_cast<unsigned long>(stats.maxStreak));
-  drawStatCell(halfW, halfW, buf, tr(STR_STATS_STREAK_BEST));
-
-  y += cellH;
-  renderer.drawLine(0, y, screenWidth, y, true);
 
   // Button hint
   const auto labels = mappedInput.mapLabels(tr(STR_BACK), "", "", "");
