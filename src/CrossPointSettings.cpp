@@ -236,7 +236,7 @@ float CrossPointSettings::getReaderLineCompression() const {
         default:
           return 0.90f;
         case WIDE:
-          return 1.0f;
+          return 1.2f;
       }
 #ifndef OMIT_CHAREINK_FONT
     case CHAREINK:
@@ -247,30 +247,30 @@ float CrossPointSettings::getReaderLineCompression() const {
         default:
           return 1.0f;
         case WIDE:
-          return 1.1f;
+          return 1.2f;
       }
 #endif  // OMIT_CHAREINK_FONT
 #ifndef OMIT_ATKINSON_FONT
     case ATKINSONHL:
       switch (lineSpacing) {
         case TIGHT:
-          return 0.90f;
+          return 0.80f;
         case NORMAL:
         default:
-          return 0.95f;
+          return 0.90f;
         case WIDE:
-          return 1.0f;
+          return 1.2f;
       }
 #endif  // OMIT_ATKINSON_FONT
     case BITTER:
       switch (lineSpacing) {
         case TIGHT:
-          return 0.95f;
+          return 0.92f;
         case NORMAL:
         default:
           return 1.0f;
         case WIDE:
-          return 1.1f;
+          return 1.3f;
       }
   }
 }
