@@ -250,18 +250,6 @@ float CrossPointSettings::getReaderLineCompression() const {
           return 1.2f;
       }
 #endif  // OMIT_CHAREINK_FONT
-#ifndef OMIT_ATKINSON_FONT
-    case ATKINSONHL:
-      switch (lineSpacing) {
-        case TIGHT:
-          return 0.80f;
-        case NORMAL:
-        default:
-          return 0.90f;
-        case WIDE:
-          return 1.2f;
-      }
-#endif  // OMIT_ATKINSON_FONT
     case BITTER:
       switch (lineSpacing) {
         case TIGHT:
@@ -334,20 +322,6 @@ int CrossPointSettings::getReaderFontId() const {
         default:
           return CHAREINK_16_FONT_ID;
       }
-#ifndef OMIT_ATKINSON_FONT
-    case ATKINSONHL:
-      switch (fontSize) {
-        case TINY:
-          return ATKINSONHL_10_FONT_ID;
-        case SMALL:
-          return ATKINSONHL_12_FONT_ID;
-        case MEDIUM:
-          return ATKINSONHL_14_FONT_ID;
-        case LARGE:
-        default:
-          return ATKINSONHL_16_FONT_ID;
-      }
-#endif  // OMIT_ATKINSON_FONT
     case BITTER:
       switch (fontSize) {
         case TINY:
