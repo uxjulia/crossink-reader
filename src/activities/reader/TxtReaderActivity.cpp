@@ -1,5 +1,6 @@
 #include "TxtReaderActivity.h"
 
+#include <FontCacheManager.h>
 #include <GfxRenderer.h>
 #include <HalStorage.h>
 #include <I18n.h>
@@ -287,7 +288,6 @@ void TxtReaderActivity::render(RenderLock&&) {
 
   renderer.clearScreen();
   renderPage();
-  renderer.clearFontCache();
 
   // Save progress
   saveProgress();
@@ -332,7 +332,13 @@ void TxtReaderActivity::renderPage() {
     }
   };
 
-  // First pass: BW rendering
+  // Font prewarm: scan pass accumulates text, then prewarm, then real render
+  auto* fcm = renderer.getFontCacheManager();
+  auto scope = fcm->createPrewarmScope();
+  renderLines();  // scan pass — text accumulated, no drawing
+  scope.endScanAndPrewarm();
+
+  // BW rendering
   renderLines();
   renderStatusBar();
 
@@ -341,6 +347,7 @@ void TxtReaderActivity::renderPage() {
   if (SETTINGS.textAntiAliasing) {
     ReaderUtils::renderAntiAliased(renderer, [&renderLines]() { renderLines(); });
   }
+  // scope destructor clears font cache via FontCacheManager
 }
 
 void TxtReaderActivity::renderStatusBar() const {
