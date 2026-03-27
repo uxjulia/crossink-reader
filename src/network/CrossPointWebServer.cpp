@@ -551,7 +551,9 @@ void CrossPointWebServer::handleDownload() const {
       totalWritten += wrote;
     }
   }
+#ifndef SIMULATOR
   client.clear();
+#endif
   file.close();
 }
 

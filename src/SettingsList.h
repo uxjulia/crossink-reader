@@ -41,9 +41,6 @@ inline const std::vector<SettingInfo>& getSettingsList() {
                         {
                             StrId::STR_LEXEND_DECA,
                             StrId::STR_BITTER,
-#ifndef OMIT_ATKINSON_FONT
-                            StrId::STR_ATKINSON_HL,
-#endif
 #ifndef OMIT_CHAREINK_FONT
                             StrId::STR_CHAREINK,
 #endif

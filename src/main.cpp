@@ -86,33 +86,6 @@ EpdFont lexenddeca16BoldItalicFont(&lexenddeca_16_bolditalic);
 EpdFontFamily lexenddeca16FontFamily(&lexenddeca16RegularFont, &lexenddeca16BoldFont, &lexenddeca16ItalicFont,
                                      &lexenddeca16BoldItalicFont);
 
-#ifndef OMIT_ATKINSON_FONT
-EpdFont atkinsonhl10RegularFont(&atkinsonhl_10_regular);
-EpdFont atkinsonhl10BoldFont(&atkinsonhl_10_bold);
-EpdFont atkinsonhl10ItalicFont(&atkinsonhl_10_italic);
-EpdFont atkinsonhl10BoldItalicFont(&atkinsonhl_10_bolditalic);
-EpdFontFamily atkinsonhl10FontFamily(&atkinsonhl10RegularFont, &atkinsonhl10BoldFont, &atkinsonhl10ItalicFont,
-                                     &atkinsonhl10BoldItalicFont);
-EpdFont atkinsonhl12RegularFont(&atkinsonhl_12_regular);
-EpdFont atkinsonhl12BoldFont(&atkinsonhl_12_bold);
-EpdFont atkinsonhl12ItalicFont(&atkinsonhl_12_italic);
-EpdFont atkinsonhl12BoldItalicFont(&atkinsonhl_12_bolditalic);
-EpdFontFamily atkinsonhl12FontFamily(&atkinsonhl12RegularFont, &atkinsonhl12BoldFont, &atkinsonhl12ItalicFont,
-                                     &atkinsonhl12BoldItalicFont);
-EpdFont atkinsonhl14RegularFont(&atkinsonhl_14_regular);
-EpdFont atkinsonhl14BoldFont(&atkinsonhl_14_bold);
-EpdFont atkinsonhl14ItalicFont(&atkinsonhl_14_italic);
-EpdFont atkinsonhl14BoldItalicFont(&atkinsonhl_14_bolditalic);
-EpdFontFamily atkinsonhl14FontFamily(&atkinsonhl14RegularFont, &atkinsonhl14BoldFont, &atkinsonhl14ItalicFont,
-                                     &atkinsonhl14BoldItalicFont);
-EpdFont atkinsonhl16RegularFont(&atkinsonhl_16_regular);
-EpdFont atkinsonhl16BoldFont(&atkinsonhl_16_bold);
-EpdFont atkinsonhl16ItalicFont(&atkinsonhl_16_italic);
-EpdFont atkinsonhl16BoldItalicFont(&atkinsonhl_16_bolditalic);
-EpdFontFamily atkinsonhl16FontFamily(&atkinsonhl16RegularFont, &atkinsonhl16BoldFont, &atkinsonhl16ItalicFont,
-                                     &atkinsonhl16BoldItalicFont);
-#endif  // OMIT_ATKINSON_FONT
-
 EpdFont bitter10RegularFont(&bitter_10_regular);
 EpdFont bitter10BoldFont(&bitter_10_bold);
 EpdFont bitter10ItalicFont(&bitter_10_italic);
@@ -138,12 +111,12 @@ EpdFontFamily bitter16FontFamily(&bitter16RegularFont, &bitter16BoldFont, &bitte
 EpdFont smallFont(&inter_8_regular);
 EpdFontFamily smallFontFamily(&smallFont);
 
-EpdFont ui10RegularFont(&ubuntu_10_regular);
-EpdFont ui10BoldFont(&ubuntu_10_bold);
+EpdFont ui10RegularFont(&dmsans_10_regular);
+EpdFont ui10BoldFont(&dmsans_10_bold);
 EpdFontFamily ui10FontFamily(&ui10RegularFont, &ui10BoldFont);
 
-EpdFont ui12RegularFont(&ubuntu_12_regular);
-EpdFont ui12BoldFont(&ubuntu_12_bold);
+EpdFont ui12RegularFont(&dmsans_12_regular);
+EpdFont ui12BoldFont(&dmsans_12_bold);
 EpdFontFamily ui12FontFamily(&ui12RegularFont, &ui12BoldFont);
 
 // measurement of power button press duration calibration value
@@ -238,13 +211,6 @@ void setupDisplayAndFonts() {
   renderer.insertFont(LEXENDDECA_10_FONT_ID, lexenddeca10FontFamily);
   renderer.insertFont(LEXENDDECA_12_FONT_ID, lexenddeca12FontFamily);
   renderer.insertFont(LEXENDDECA_16_FONT_ID, lexenddeca16FontFamily);
-
-#ifndef OMIT_ATKINSON_FONT
-  renderer.insertFont(ATKINSONHL_10_FONT_ID, atkinsonhl10FontFamily);
-  renderer.insertFont(ATKINSONHL_12_FONT_ID, atkinsonhl12FontFamily);
-  renderer.insertFont(ATKINSONHL_14_FONT_ID, atkinsonhl14FontFamily);
-  renderer.insertFont(ATKINSONHL_16_FONT_ID, atkinsonhl16FontFamily);
-#endif  // OMIT_ATKINSON_FONT
 
   renderer.insertFont(BITTER_10_FONT_ID, bitter10FontFamily);
   renderer.insertFont(BITTER_12_FONT_ID, bitter12FontFamily);
@@ -395,6 +361,9 @@ void loop() {
     LOG_DBG("SLP", "Auto-sleep triggered after %lu ms of inactivity", sleepTimeoutMs);
     enterDeepSleep();
     // This should never be hit as `enterDeepSleep` calls esp_deep_sleep_start
+    // In the simulator, deep sleep is a no-op and returns — reset the timer so
+    // the main loop does not immediately re-trigger auto-sleep.
+    lastActivityTime = millis();
     return;
   }
 
@@ -405,6 +374,7 @@ void loop() {
     }
     enterDeepSleep();
     // This should never be hit as `enterDeepSleep` calls esp_deep_sleep_start
+    lastActivityTime = millis();
     return;
   }
 
