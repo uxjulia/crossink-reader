@@ -12,7 +12,7 @@ class JpegToBmpConverter {
                                           bool oneBit, bool crop = true, const char* filePath = nullptr);
 
  public:
-  static bool jpegFileToBmpStream(FsFile& jpegFile, Print& bmpOut, const char* filePath, bool crop = true);
+  static bool jpegFileToBmpStream(FsFile& jpegFile, Print& bmpOut, bool crop = true);
   // Convert with custom target size (for thumbnails)
   static bool jpegFileToBmpStreamWithSize(FsFile& jpegFile, Print& bmpOut, const char* filePath, int targetMaxWidth,
                                           int targetMaxHeight);
