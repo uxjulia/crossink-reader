@@ -4,8 +4,8 @@
 #include <Epub/Section.h>
 
 #include "BookReadingStats.h"
-#include "GlobalReadingStats.h"
 #include "EpubReaderMenuActivity.h"
+#include "GlobalReadingStats.h"
 #include "activities/Activity.h"
 
 class EpubReaderActivity final : public Activity {
