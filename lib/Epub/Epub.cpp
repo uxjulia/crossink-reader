@@ -558,7 +558,7 @@ bool Epub::generateCoverBmp(bool cropped) const {
       coverJpg.close();
       return false;
     }
-    const bool success = JpegToBmpConverter::jpegFileToBmpStream(coverJpg, coverBmp, cropped);
+    const bool success = JpegToBmpConverter::jpegFileToBmpStream(coverJpg, coverBmp, coverJpgTempPath.c_str(), cropped);
     coverJpg.close();
     coverBmp.close();
     Storage.remove(coverJpgTempPath.c_str());
