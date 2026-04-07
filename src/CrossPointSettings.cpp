@@ -236,7 +236,7 @@ float CrossPointSettings::getReaderLineCompression() const {
         default:
           return 1.0f;
         case WIDE:
-          return 1.2f;
+          return 1.4f;
       }
 #ifndef OMIT_CHAREINK_FONT
     case CHAREINK:
@@ -245,7 +245,7 @@ float CrossPointSettings::getReaderLineCompression() const {
           return 0.95f;
         case NORMAL:
         default:
-          return 1.0f;
+          return 1.1f;
         case WIDE:
           return 1.5f;
       }
@@ -253,12 +253,12 @@ float CrossPointSettings::getReaderLineCompression() const {
     case BITTER:
       switch (lineSpacing) {
         case TIGHT:
-          return 0.93f;
+          return 0.95f;
         case NORMAL:
         default:
-          return 1.0f;
+          return 1.1f;
         case WIDE:
-          return 1.3f;
+          return 1.5f;
       }
   }
 }
