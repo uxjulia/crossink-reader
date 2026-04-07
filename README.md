@@ -52,6 +52,7 @@ Some simple per-book reading stats are tracked automatically and displayed in tw
 - Number of sessions
 - Pages turned
 - Average session time
+- All time reading stats
 
 **Home screen book card (Lyra theme only):**
 
