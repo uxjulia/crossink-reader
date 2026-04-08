@@ -21,19 +21,17 @@ bool MappedInputManager::mapButton(const Button button, bool (HalGPIO::*fn)(uint
   const auto sideLayout = static_cast<CrossPointSettings::SIDE_BUTTON_LAYOUT>(SETTINGS.sideButtonLayout);
   const auto& side = kSideLayouts[sideLayout];
 
+  const bool useReaderMapping = readerMode && SETTINGS.readerFrontButtonsEnabled;
+
   switch (button) {
     case Button::Back:
-      // Logical Back maps to user-configured front button.
-      return (gpio.*fn)(SETTINGS.frontButtonBack);
+      return (gpio.*fn)(useReaderMapping ? SETTINGS.readerFrontButtonBack : SETTINGS.frontButtonBack);
     case Button::Confirm:
-      // Logical Confirm maps to user-configured front button.
-      return (gpio.*fn)(SETTINGS.frontButtonConfirm);
+      return (gpio.*fn)(useReaderMapping ? SETTINGS.readerFrontButtonConfirm : SETTINGS.frontButtonConfirm);
     case Button::Left:
-      // Logical Left maps to user-configured front button.
-      return (gpio.*fn)(SETTINGS.frontButtonLeft);
+      return (gpio.*fn)(useReaderMapping ? SETTINGS.readerFrontButtonLeft : SETTINGS.frontButtonLeft);
     case Button::Right:
-      // Logical Right maps to user-configured front button.
-      return (gpio.*fn)(SETTINGS.frontButtonRight);
+      return (gpio.*fn)(useReaderMapping ? SETTINGS.readerFrontButtonRight : SETTINGS.frontButtonRight);
     case Button::Up:
       // Side buttons remain fixed for Up/Down.
       return (gpio.*fn)(HalGPIO::BTN_UP);
@@ -68,21 +66,18 @@ unsigned long MappedInputManager::getHeldTime() const { return gpio.getHeldTime(
 
 MappedInputManager::Labels MappedInputManager::mapLabels(const char* back, const char* confirm, const char* previous,
                                                          const char* next) const {
+  const bool useReaderMapping = readerMode && SETTINGS.readerFrontButtonsEnabled;
+  const uint8_t btnBack = useReaderMapping ? SETTINGS.readerFrontButtonBack : SETTINGS.frontButtonBack;
+  const uint8_t btnConfirm = useReaderMapping ? SETTINGS.readerFrontButtonConfirm : SETTINGS.frontButtonConfirm;
+  const uint8_t btnLeft = useReaderMapping ? SETTINGS.readerFrontButtonLeft : SETTINGS.frontButtonLeft;
+  const uint8_t btnRight = useReaderMapping ? SETTINGS.readerFrontButtonRight : SETTINGS.frontButtonRight;
+
   // Build the label order based on the configured hardware mapping.
   auto labelForHardware = [&](uint8_t hw) -> const char* {
-    // Compare against configured logical roles and return the matching label.
-    if (hw == SETTINGS.frontButtonBack) {
-      return back;
-    }
-    if (hw == SETTINGS.frontButtonConfirm) {
-      return confirm;
-    }
-    if (hw == SETTINGS.frontButtonLeft) {
-      return previous;
-    }
-    if (hw == SETTINGS.frontButtonRight) {
-      return next;
-    }
+    if (hw == btnBack) return back;
+    if (hw == btnConfirm) return confirm;
+    if (hw == btnLeft) return previous;
+    if (hw == btnRight) return next;
     return "";
   };
 

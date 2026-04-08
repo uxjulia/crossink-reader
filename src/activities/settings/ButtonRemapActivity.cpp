@@ -47,10 +47,18 @@ void ButtonRemapActivity::loop() {
   // - Down: cancel without saving.
   if (mappedInput.wasPressed(MappedInputManager::Button::Up)) {
     // Persist default mapping immediately so the user can recover quickly.
-    SETTINGS.frontButtonBack = CrossPointSettings::FRONT_HW_BACK;
-    SETTINGS.frontButtonConfirm = CrossPointSettings::FRONT_HW_CONFIRM;
-    SETTINGS.frontButtonLeft = CrossPointSettings::FRONT_HW_LEFT;
-    SETTINGS.frontButtonRight = CrossPointSettings::FRONT_HW_RIGHT;
+    if (readerMode) {
+      SETTINGS.readerFrontButtonsEnabled = 0;  // Revert to system mapping
+      SETTINGS.readerFrontButtonBack = CrossPointSettings::FRONT_HW_BACK;
+      SETTINGS.readerFrontButtonConfirm = CrossPointSettings::FRONT_HW_CONFIRM;
+      SETTINGS.readerFrontButtonLeft = CrossPointSettings::FRONT_HW_LEFT;
+      SETTINGS.readerFrontButtonRight = CrossPointSettings::FRONT_HW_RIGHT;
+    } else {
+      SETTINGS.frontButtonBack = CrossPointSettings::FRONT_HW_BACK;
+      SETTINGS.frontButtonConfirm = CrossPointSettings::FRONT_HW_CONFIRM;
+      SETTINGS.frontButtonLeft = CrossPointSettings::FRONT_HW_LEFT;
+      SETTINGS.frontButtonRight = CrossPointSettings::FRONT_HW_RIGHT;
+    }
     SETTINGS.saveToFile();
     finish();
     return;
@@ -110,7 +118,8 @@ void ButtonRemapActivity::render(RenderLock&&) {
 
   renderer.clearScreen();
 
-  GUI.drawHeader(renderer, Rect{0, metrics.topPadding, pageWidth, metrics.headerHeight}, tr(STR_REMAP_FRONT_BUTTONS));
+  GUI.drawHeader(renderer, Rect{0, metrics.topPadding, pageWidth, metrics.headerHeight},
+                 readerMode ? tr(STR_REMAP_FRONT_BUTTONS_READER) : tr(STR_REMAP_FRONT_BUTTONS));
   GUI.drawSubHeader(renderer, Rect{0, metrics.topPadding + metrics.headerHeight, pageWidth, metrics.tabBarHeight},
                     tr(STR_REMAP_PROMPT));
 
@@ -151,10 +160,18 @@ void ButtonRemapActivity::render(RenderLock&&) {
 
 void ButtonRemapActivity::applyTempMapping() {
   // Commit temporary mapping into settings (logical role -> hardware).
-  SETTINGS.frontButtonBack = tempMapping[0];
-  SETTINGS.frontButtonConfirm = tempMapping[1];
-  SETTINGS.frontButtonLeft = tempMapping[2];
-  SETTINGS.frontButtonRight = tempMapping[3];
+  if (readerMode) {
+    SETTINGS.readerFrontButtonsEnabled = 1;  // Activate reader-specific mapping
+    SETTINGS.readerFrontButtonBack = tempMapping[0];
+    SETTINGS.readerFrontButtonConfirm = tempMapping[1];
+    SETTINGS.readerFrontButtonLeft = tempMapping[2];
+    SETTINGS.readerFrontButtonRight = tempMapping[3];
+  } else {
+    SETTINGS.frontButtonBack = tempMapping[0];
+    SETTINGS.frontButtonConfirm = tempMapping[1];
+    SETTINGS.frontButtonLeft = tempMapping[2];
+    SETTINGS.frontButtonRight = tempMapping[3];
+  }
 }
 
 bool ButtonRemapActivity::validateUnassigned(const uint8_t pressedButton) {

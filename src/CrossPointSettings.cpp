@@ -76,6 +76,22 @@ void CrossPointSettings::validateFrontButtonMapping(CrossPointSettings& settings
   }
 }
 
+void CrossPointSettings::validateReaderFrontButtonMapping(CrossPointSettings& settings) {
+  const uint8_t mapping[] = {settings.readerFrontButtonBack, settings.readerFrontButtonConfirm,
+                             settings.readerFrontButtonLeft, settings.readerFrontButtonRight};
+  for (size_t i = 0; i < 4; i++) {
+    for (size_t j = i + 1; j < 4; j++) {
+      if (mapping[i] == mapping[j]) {
+        settings.readerFrontButtonBack = FRONT_HW_BACK;
+        settings.readerFrontButtonConfirm = FRONT_HW_CONFIRM;
+        settings.readerFrontButtonLeft = FRONT_HW_LEFT;
+        settings.readerFrontButtonRight = FRONT_HW_RIGHT;
+        return;
+      }
+    }
+  }
+}
+
 bool CrossPointSettings::saveToFile() const {
   Storage.mkdir("/.crosspoint");
   return JsonSettingsIO::saveSettings(*this, SETTINGS_FILE_JSON);
