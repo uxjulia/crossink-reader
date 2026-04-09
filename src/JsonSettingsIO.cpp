@@ -123,6 +123,12 @@ bool JsonSettingsIO::saveSettings(const CrossPointSettings& s, const char* path)
   doc["frontButtonConfirm"] = s.frontButtonConfirm;
   doc["frontButtonLeft"] = s.frontButtonLeft;
   doc["frontButtonRight"] = s.frontButtonRight;
+  // Reader-specific front button remap.
+  doc["readerFrontButtonsEnabled"] = s.readerFrontButtonsEnabled;
+  doc["readerFrontButtonBack"] = s.readerFrontButtonBack;
+  doc["readerFrontButtonConfirm"] = s.readerFrontButtonConfirm;
+  doc["readerFrontButtonLeft"] = s.readerFrontButtonLeft;
+  doc["readerFrontButtonRight"] = s.readerFrontButtonRight;
 
   String json;
   serializeJson(doc, json);
@@ -202,6 +208,17 @@ bool JsonSettingsIO::loadSettings(CrossPointSettings& s, const char* json, bool*
   s.frontButtonRight =
       clamp(doc["frontButtonRight"] | (uint8_t)S::FRONT_HW_RIGHT, S::FRONT_BUTTON_HARDWARE_COUNT, S::FRONT_HW_RIGHT);
   CrossPointSettings::validateFrontButtonMapping(s);
+  // Reader-specific front button remap.
+  s.readerFrontButtonsEnabled = clamp(doc["readerFrontButtonsEnabled"] | (uint8_t)0, (uint8_t)2, (uint8_t)0);
+  s.readerFrontButtonBack =
+      clamp(doc["readerFrontButtonBack"] | (uint8_t)S::FRONT_HW_BACK, S::FRONT_BUTTON_HARDWARE_COUNT, S::FRONT_HW_BACK);
+  s.readerFrontButtonConfirm = clamp(doc["readerFrontButtonConfirm"] | (uint8_t)S::FRONT_HW_CONFIRM,
+                                     S::FRONT_BUTTON_HARDWARE_COUNT, S::FRONT_HW_CONFIRM);
+  s.readerFrontButtonLeft =
+      clamp(doc["readerFrontButtonLeft"] | (uint8_t)S::FRONT_HW_LEFT, S::FRONT_BUTTON_HARDWARE_COUNT, S::FRONT_HW_LEFT);
+  s.readerFrontButtonRight = clamp(doc["readerFrontButtonRight"] | (uint8_t)S::FRONT_HW_RIGHT,
+                                   S::FRONT_BUTTON_HARDWARE_COUNT, S::FRONT_HW_RIGHT);
+  CrossPointSettings::validateReaderFrontButtonMapping(s);
 
   LOG_DBG("CPS", "Settings loaded from file");
 

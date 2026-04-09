@@ -34,6 +34,9 @@ void XtcReaderActivity::onEnter() {
 
   xtc->setupCacheDir();
 
+  // Activate reader-specific front button mapping (if configured).
+  mappedInput.setReaderMode(true);
+
   // Load saved progress
   loadProgress();
 
@@ -48,6 +51,8 @@ void XtcReaderActivity::onEnter() {
 
 void XtcReaderActivity::onExit() {
   Activity::onExit();
+
+  mappedInput.setReaderMode(false);
 
   APP_STATE.readerActivityLoadCount = 0;
   APP_STATE.saveToFile();

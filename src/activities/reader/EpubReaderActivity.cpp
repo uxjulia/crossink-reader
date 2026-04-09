@@ -55,6 +55,9 @@ void EpubReaderActivity::onEnter() {
   // NOTE: This affects layout math and must be applied before any render calls.
   ReaderUtils::applyOrientation(renderer, SETTINGS.orientation);
 
+  // Activate reader-specific front button mapping (if configured).
+  mappedInput.setReaderMode(true);
+
   epub->setupCacheDir();
 
   FsFile f;
@@ -105,6 +108,9 @@ void EpubReaderActivity::onEnter() {
 
 void EpubReaderActivity::onExit() {
   Activity::onExit();
+
+  // Deactivate reader-specific front button mapping.
+  mappedInput.setReaderMode(false);
 
   // Reset orientation back to portrait for the rest of the UI
   renderer.setOrientation(GfxRenderer::Orientation::Portrait);

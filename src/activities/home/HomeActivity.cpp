@@ -259,7 +259,7 @@ void HomeActivity::render(RenderLock&&) {
     // Insert Reading Stats after OPDS (or after Recents if no OPDS), before File Transfer
     const int insertPos = hasOpdsUrl ? 3 : 2;
     menuItems.insert(menuItems.begin() + insertPos, tr(STR_READING_STATS));
-    menuIcons.insert(menuIcons.begin() + insertPos, Book);
+    menuIcons.insert(menuIcons.begin() + insertPos, Chart);
   }
 
   GUI.drawButtonMenu(

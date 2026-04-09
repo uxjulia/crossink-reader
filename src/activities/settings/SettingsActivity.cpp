@@ -44,6 +44,8 @@ void SettingsActivity::onEnter() {
   }
 
   // Append device-only ACTION items
+  controlsSettings.insert(controlsSettings.begin(), SettingInfo::Action(StrId::STR_REMAP_FRONT_BUTTONS_READER,
+                                                                        SettingAction::RemapFrontButtonsReader));
   controlsSettings.insert(controlsSettings.begin(),
                           SettingInfo::Action(StrId::STR_REMAP_FRONT_BUTTONS, SettingAction::RemapFrontButtons));
   systemSettings.push_back(SettingInfo::Action(StrId::STR_WIFI_NETWORKS, SettingAction::Network));
@@ -169,7 +171,10 @@ void SettingsActivity::toggleCurrentSetting() {
 
     switch (setting.action) {
       case SettingAction::RemapFrontButtons:
-        startActivityForResult(std::make_unique<ButtonRemapActivity>(renderer, mappedInput), resultHandler);
+        startActivityForResult(std::make_unique<ButtonRemapActivity>(renderer, mappedInput, false), resultHandler);
+        break;
+      case SettingAction::RemapFrontButtonsReader:
+        startActivityForResult(std::make_unique<ButtonRemapActivity>(renderer, mappedInput, true), resultHandler);
         break;
       case SettingAction::CustomiseStatusBar:
         startActivityForResult(std::make_unique<StatusBarSettingsActivity>(renderer, mappedInput), resultHandler);
@@ -247,6 +252,15 @@ void SettingsActivity::render(RenderLock&&) {
         return valueText;
       },
       true);
+
+  // Draw CrossInk version label at the bottom of the System tab
+  if (selectedCategoryIndex == 3) {
+    const int labelWidth = renderer.getTextWidth(SMALL_FONT_ID, "CrossInk " CROSSINK_VERSION);
+    const int labelX = (pageWidth - labelWidth) / 2;
+    const int labelY =
+        pageHeight - metrics.buttonHintsHeight - metrics.verticalSpacing - 15;  // 15px above the button hints
+    renderer.drawText(SMALL_FONT_ID, labelX, labelY, "CrossInk " CROSSINK_VERSION);
+  }
 
   // Draw help text
   const auto confirmLabel = (selectedSettingIndex == 0)

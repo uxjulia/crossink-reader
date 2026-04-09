@@ -168,6 +168,13 @@ class CrossPointSettings {
   uint8_t frontButtonConfirm = FRONT_HW_CONFIRM;
   uint8_t frontButtonLeft = FRONT_HW_LEFT;
   uint8_t frontButtonRight = FRONT_HW_RIGHT;
+  // Reader-specific front button remap (overrides system mapping while in reader activities).
+  // readerFrontButtonsEnabled = 0 means the reader uses the system mapping above.
+  uint8_t readerFrontButtonsEnabled = 0;
+  uint8_t readerFrontButtonBack = FRONT_HW_BACK;
+  uint8_t readerFrontButtonConfirm = FRONT_HW_CONFIRM;
+  uint8_t readerFrontButtonLeft = FRONT_HW_LEFT;
+  uint8_t readerFrontButtonRight = FRONT_HW_RIGHT;
   // Reader font settings
   uint8_t fontFamily = LEXENDDECA;
   uint8_t fontSize = MEDIUM;
@@ -217,6 +224,7 @@ class CrossPointSettings {
   bool loadFromFile();
 
   static void validateFrontButtonMapping(CrossPointSettings& settings);
+  static void validateReaderFrontButtonMapping(CrossPointSettings& settings);
 
  private:
   bool loadFromBinaryFile();
