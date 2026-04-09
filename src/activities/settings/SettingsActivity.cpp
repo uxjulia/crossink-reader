@@ -44,8 +44,8 @@ void SettingsActivity::onEnter() {
   }
 
   // Append device-only ACTION items
-  controlsSettings.insert(controlsSettings.begin(),
-                          SettingInfo::Action(StrId::STR_REMAP_FRONT_BUTTONS_READER, SettingAction::RemapFrontButtonsReader));
+  controlsSettings.insert(controlsSettings.begin(), SettingInfo::Action(StrId::STR_REMAP_FRONT_BUTTONS_READER,
+                                                                        SettingAction::RemapFrontButtonsReader));
   controlsSettings.insert(controlsSettings.begin(),
                           SettingInfo::Action(StrId::STR_REMAP_FRONT_BUTTONS, SettingAction::RemapFrontButtons));
   systemSettings.push_back(SettingInfo::Action(StrId::STR_WIFI_NETWORKS, SettingAction::Network));
