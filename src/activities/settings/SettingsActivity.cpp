@@ -253,6 +253,15 @@ void SettingsActivity::render(RenderLock&&) {
       },
       true);
 
+  // Draw CrossInk version label at the bottom of the System tab
+  if (selectedCategoryIndex == 3) {
+    const int labelWidth = renderer.getTextWidth(SMALL_FONT_ID, "CrossInk " CROSSINK_VERSION);
+    const int labelX = (pageWidth - labelWidth) / 2;
+    const int labelY =
+        pageHeight - metrics.buttonHintsHeight - metrics.verticalSpacing - 15;  // 15px above the button hints
+    renderer.drawText(SMALL_FONT_ID, labelX, labelY, "CrossInk " CROSSINK_VERSION);
+  }
+
   // Draw help text
   const auto confirmLabel = (selectedSettingIndex == 0)
                                 ? I18N.get(categoryNames[(selectedCategoryIndex + 1) % categoryCount])

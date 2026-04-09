@@ -550,9 +550,9 @@ void LyraTheme::drawButtonMenu(GfxRenderer& renderer, Rect rect, int buttonCount
   const auto& menuMetrics = UITheme::getInstance().getMetrics();
   for (int i = 0; i < buttonCount; ++i) {
     int tileWidth = rect.width - menuMetrics.contentSidePadding * 2;
-    Rect tileRect = Rect{rect.x + menuMetrics.contentSidePadding,
-                         rect.y + i * (menuMetrics.menuRowHeight + menuMetrics.menuSpacing), tileWidth,
-                         menuMetrics.menuRowHeight};
+    Rect tileRect =
+        Rect{rect.x + menuMetrics.contentSidePadding,
+             rect.y + i * (menuMetrics.menuRowHeight + menuMetrics.menuSpacing), tileWidth, menuMetrics.menuRowHeight};
 
     const bool selected = selectedIndex == i;
 
