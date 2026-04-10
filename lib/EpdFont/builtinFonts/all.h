@@ -1,5 +1,9 @@
 #pragma once
 
+// Reading fonts — two variants controlled by OMIT_EMOJI_FONTS.
+// The no-emoji variants live in noemoji/ with the same filenames and variable names.
+// Generate both sets with lib/EpdFont/scripts/convert-builtin-fonts.sh.
+#ifndef OMIT_EMOJI_FONTS
 #include <builtinFonts/bitter_10_bold.h>
 #include <builtinFonts/bitter_10_bolditalic.h>
 #include <builtinFonts/bitter_10_italic.h>
@@ -32,11 +36,6 @@
 #include <builtinFonts/charein_16_bolditalic.h>
 #include <builtinFonts/charein_16_italic.h>
 #include <builtinFonts/charein_16_regular.h>
-#include <builtinFonts/dmsans_10_bold.h>
-#include <builtinFonts/dmsans_10_regular.h>
-#include <builtinFonts/dmsans_12_bold.h>
-#include <builtinFonts/dmsans_12_regular.h>
-#include <builtinFonts/inter_8_regular.h>
 #include <builtinFonts/lexenddeca_10_bold.h>
 #include <builtinFonts/lexenddeca_10_bolditalic.h>
 #include <builtinFonts/lexenddeca_10_italic.h>
@@ -53,3 +52,64 @@
 #include <builtinFonts/lexenddeca_16_bolditalic.h>
 #include <builtinFonts/lexenddeca_16_italic.h>
 #include <builtinFonts/lexenddeca_16_regular.h>
+#else
+#include <builtinFonts/noemoji/bionicchareink_10.h>
+#include <builtinFonts/noemoji/bionicchareink_12.h>
+#include <builtinFonts/noemoji/bionicchareink_14.h>
+#include <builtinFonts/noemoji/bionicchareink_16.h>
+#include <builtinFonts/noemoji/bitter_10_bold.h>
+#include <builtinFonts/noemoji/bitter_10_bolditalic.h>
+#include <builtinFonts/noemoji/bitter_10_italic.h>
+#include <builtinFonts/noemoji/bitter_10_regular.h>
+#include <builtinFonts/noemoji/bitter_12_bold.h>
+#include <builtinFonts/noemoji/bitter_12_bolditalic.h>
+#include <builtinFonts/noemoji/bitter_12_italic.h>
+#include <builtinFonts/noemoji/bitter_12_regular.h>
+#include <builtinFonts/noemoji/bitter_14_bold.h>
+#include <builtinFonts/noemoji/bitter_14_bolditalic.h>
+#include <builtinFonts/noemoji/bitter_14_italic.h>
+#include <builtinFonts/noemoji/bitter_14_regular.h>
+#include <builtinFonts/noemoji/bitter_16_bold.h>
+#include <builtinFonts/noemoji/bitter_16_bolditalic.h>
+#include <builtinFonts/noemoji/bitter_16_italic.h>
+#include <builtinFonts/noemoji/bitter_16_regular.h>
+#include <builtinFonts/noemoji/charein_10_bold.h>
+#include <builtinFonts/noemoji/charein_10_bolditalic.h>
+#include <builtinFonts/noemoji/charein_10_italic.h>
+#include <builtinFonts/noemoji/charein_10_regular.h>
+#include <builtinFonts/noemoji/charein_12_bold.h>
+#include <builtinFonts/noemoji/charein_12_bolditalic.h>
+#include <builtinFonts/noemoji/charein_12_italic.h>
+#include <builtinFonts/noemoji/charein_12_regular.h>
+#include <builtinFonts/noemoji/charein_14_bold.h>
+#include <builtinFonts/noemoji/charein_14_bolditalic.h>
+#include <builtinFonts/noemoji/charein_14_italic.h>
+#include <builtinFonts/noemoji/charein_14_regular.h>
+#include <builtinFonts/noemoji/charein_16_bold.h>
+#include <builtinFonts/noemoji/charein_16_bolditalic.h>
+#include <builtinFonts/noemoji/charein_16_italic.h>
+#include <builtinFonts/noemoji/charein_16_regular.h>
+#include <builtinFonts/noemoji/lexenddeca_10_bold.h>
+#include <builtinFonts/noemoji/lexenddeca_10_bolditalic.h>
+#include <builtinFonts/noemoji/lexenddeca_10_italic.h>
+#include <builtinFonts/noemoji/lexenddeca_10_regular.h>
+#include <builtinFonts/noemoji/lexenddeca_12_bold.h>
+#include <builtinFonts/noemoji/lexenddeca_12_bolditalic.h>
+#include <builtinFonts/noemoji/lexenddeca_12_italic.h>
+#include <builtinFonts/noemoji/lexenddeca_12_regular.h>
+#include <builtinFonts/noemoji/lexenddeca_14_bold.h>
+#include <builtinFonts/noemoji/lexenddeca_14_bolditalic.h>
+#include <builtinFonts/noemoji/lexenddeca_14_italic.h>
+#include <builtinFonts/noemoji/lexenddeca_14_regular.h>
+#include <builtinFonts/noemoji/lexenddeca_16_bold.h>
+#include <builtinFonts/noemoji/lexenddeca_16_bolditalic.h>
+#include <builtinFonts/noemoji/lexenddeca_16_italic.h>
+#include <builtinFonts/noemoji/lexenddeca_16_regular.h>
+#endif
+
+// UI fonts — no emoji variant in either build
+#include <builtinFonts/dmsans_10_bold.h>
+#include <builtinFonts/dmsans_10_regular.h>
+#include <builtinFonts/dmsans_12_bold.h>
+#include <builtinFonts/dmsans_12_regular.h>
+#include <builtinFonts/inter_8_regular.h>
