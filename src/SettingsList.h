@@ -41,9 +41,7 @@ inline const std::vector<SettingInfo>& getSettingsList() {
                         {
                             StrId::STR_LEXEND_DECA,
                             StrId::STR_BITTER,
-#ifndef OMIT_CHAREINK_FONT
                             StrId::STR_CHAREINK,
-#endif
                         },
                         "fontFamily", StrId::STR_CAT_READER),
       SettingInfo::Enum(StrId::STR_FONT_SIZE, &CrossPointSettings::fontSize,
