@@ -776,6 +776,8 @@ void EpubReaderActivity::renderContents(std::unique_ptr<Page> page, const int or
 
   LOG_DBG("ERS", "Heap: before=%lu after=%lu delta=%ld", heapBefore, heapAfter,
           (int32_t)heapAfter - (int32_t)heapBefore);
+  (void)heapBefore;
+  (void)heapAfter;
 
   // Force special handling for pages with images when anti-aliasing is on
   bool imagePageWithAA = page->hasImages() && SETTINGS.textAntiAliasing;
