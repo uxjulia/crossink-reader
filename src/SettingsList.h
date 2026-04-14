@@ -52,7 +52,8 @@ inline const std::vector<SettingInfo>& getSettingsList() {
 #ifndef OMIT_SMALL_FONT
                             StrId::STR_SMALL,
 #endif
-                            StrId::STR_MEDIUM, StrId::STR_LARGE,
+                            StrId::STR_MEDIUM,
+                            StrId::STR_LARGE,
 #ifndef OMIT_XLARGE_FONT
                             StrId::STR_X_LARGE,
 #endif

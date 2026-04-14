@@ -171,13 +171,13 @@ bool CrossPointSettings::loadFromBinaryFile() {
     {
       constexpr uint8_t activeFontSizeCount = FONT_SIZE_COUNT
 #ifdef OMIT_TINY_FONT
-          - 1
+                                              - 1
 #endif
 #ifdef OMIT_SMALL_FONT
-          - 1
+                                              - 1
 #endif
 #ifdef OMIT_XLARGE_FONT
-          - 1
+                                              - 1
 #endif
           ;
       readAndValidate(inputFile, fontSize, activeFontSizeCount);
