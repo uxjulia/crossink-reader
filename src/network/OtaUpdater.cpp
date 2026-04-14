@@ -16,6 +16,12 @@ OtaUpdater::OtaUpdaterError OtaUpdater::installUpdate() { return NO_UPDATE; }
 namespace {
 constexpr char latestReleaseUrl[] = "https://api.github.com/repos/uxjulia/crossink-reader/releases/latest";
 
+#ifdef CROSSPOINT_FIRMWARE_VARIANT
+constexpr char firmwareAssetName[] = "firmware-" CROSSPOINT_FIRMWARE_VARIANT ".bin";
+#else
+constexpr char firmwareAssetName[] = "firmware.bin";
+#endif
+
 /* This is buffer and size holder to keep upcoming data from latestReleaseUrl */
 char* local_buf;
 int output_len;
@@ -142,8 +148,9 @@ OtaUpdater::OtaUpdaterError OtaUpdater::checkForUpdate() {
 
   latestVersion = doc["tag_name"].as<std::string>();
 
+  LOG_DBG("OTA", "Looking for asset: %s", firmwareAssetName);
   for (int i = 0; i < doc["assets"].size(); i++) {
-    if (doc["assets"][i]["name"] == "firmware.bin") {
+    if (doc["assets"][i]["name"] == firmwareAssetName) {
       otaUrl = doc["assets"][i]["browser_download_url"].as<std::string>();
       otaSize = doc["assets"][i]["size"].as<size_t>();
       totalSize = otaSize;
@@ -153,7 +160,7 @@ OtaUpdater::OtaUpdaterError OtaUpdater::checkForUpdate() {
   }
 
   if (!updateAvailable) {
-    LOG_ERR("OTA", "No firmware.bin asset found");
+    LOG_ERR("OTA", "No %s asset found in release", firmwareAssetName);
     return NO_UPDATE;
   }
 
