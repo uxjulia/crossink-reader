@@ -82,24 +82,21 @@ jobs:
           pio run | tee pio.log
 
       - name: Extract firmware stats
-
         run: |
           set -euo pipefail
-          ram_line="$(grep -E "RAM:\\s" -m1 pio.log || true)"
-          flash_line="$(grep -E "Flash:\\s" -m1 pio.log || true)"
-          echo "ram_line=${ram_line}" >> "$GITHUB_OUTPUT"
-          echo "flash_line=${flash_line}" >> "$GITHUB_OUTPUT"
           {
             echo "## Firmware build stats"
-            if [ -n "$ram_line" ]; then echo "- ${ram_line}"; else echo "- RAM: not found"; fi
-            if [ -n "$flash_line" ]; then echo "- ${flash_line}"; else echo "- Flash: not found"; fi
+            grep -E "RAM:\s|Flash:\s" pio.log | while read -r line; do echo "- ${line}"; done
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Upload firmware.bin artifact
+      - name: Upload firmware artifacts
         uses: actions/upload-artifact@v6
         with:
-          name: firmware.bin
-          path: .pio/build/default/firmware.bin
+          name: firmware
+          path: |
+            .pio/build/tiny/firmware-tiny.bin
+            .pio/build/xlarge/firmware-xlarge.bin
+            .pio/build/no_emoji/firmware-no_emoji.bin
           if-no-files-found: error
 
   # This job is used as the PR required actions check, allows for changes to other steps in the future without breaking
