@@ -761,7 +761,10 @@ bool CssParser::loadFromCache() {
   struct FileGuard {
     FsFile& f;
     explicit FileGuard(FsFile& f) : f(f) {}
-    ~FileGuard() { f.close(); }
+    // Ensure we only close an open file.
+    ~FileGuard() {
+      if (f.isOpen()) f.close();
+    }
   } fileGuard(file);
 
   // Clear existing rules
