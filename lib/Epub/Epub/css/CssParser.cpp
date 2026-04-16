@@ -758,6 +758,11 @@ bool CssParser::loadFromCache() {
   if (!Storage.openFileForRead("CSS", cachePath + rulesCache, file)) {
     return false;
   }
+  struct FileGuard {
+    FsFile& f;
+    explicit FileGuard(FsFile& f) : f(f) {}
+    ~FileGuard() { f.close(); }
+  } fileGuard(file);
 
   // Clear existing rules
   clear();
