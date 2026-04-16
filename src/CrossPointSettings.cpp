@@ -142,7 +142,6 @@ bool CrossPointSettings::loadFromBinaryFile() {
   serialization::readPod(inputFile, version);
   if (version != SETTINGS_FILE_VERSION) {
     LOG_ERR("CPS", "Deserialization failed: Unknown version %u", version);
-    inputFile.close();
     return false;
   }
 
@@ -249,7 +248,6 @@ bool CrossPointSettings::loadFromBinaryFile() {
     applyLegacyFrontButtonLayout(*this);
   }
 
-  inputFile.close();
   LOG_DBG("CPS", "Settings loaded from binary file");
   return true;
 }

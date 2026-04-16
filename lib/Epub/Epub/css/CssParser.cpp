@@ -746,7 +746,6 @@ bool CssParser::saveToCache() const {
   }
 
   LOG_DBG("CSS", "Saved %u rules to cache", ruleCount);
-  file.close();
   return true;
 }
 
@@ -768,6 +767,7 @@ bool CssParser::loadFromCache() {
   if (file.read(&version, 1) != 1 || version != CssParser::CSS_CACHE_VERSION) {
     LOG_DBG("CSS", "Cache version mismatch (got %u, expected %u), removing stale cache for rebuild", version,
             CssParser::CSS_CACHE_VERSION);
+    // Explicitly close() file before calling Storage.remove()
     file.close();
     Storage.remove((cachePath + rulesCache).c_str());
     return false;
@@ -776,14 +776,12 @@ bool CssParser::loadFromCache() {
   // Read rule count
   uint16_t ruleCount = 0;
   if (file.read(&ruleCount, sizeof(ruleCount)) != sizeof(ruleCount)) {
-    file.close();
     return false;
   }
 
   if (ruleCount > MAX_RULES) {
     LOG_DBG("CSS", "Invalid cache rule count (%u > %zu)", ruleCount, MAX_RULES);
     rulesBySelector_.clear();
-    file.close();
     return false;
   }
 
@@ -802,19 +800,16 @@ bool CssParser::loadFromCache() {
     uint16_t selectorLen = 0;
     if (!hasRemainingBytes(sizeof(selectorLen))) {
       rulesBySelector_.clear();
-      file.close();
       return false;
     }
     if (file.read(&selectorLen, sizeof(selectorLen)) != sizeof(selectorLen)) {
       rulesBySelector_.clear();
-      file.close();
       return false;
     }
 
     if (selectorLen == 0 || selectorLen > MAX_SELECTOR_LENGTH || !hasRemainingBytes(selectorLen)) {
       LOG_DBG("CSS", "Invalid selector length in cache: %u", selectorLen);
       rulesBySelector_.clear();
-      file.close();
       return false;
     }
 
@@ -822,14 +817,12 @@ bool CssParser::loadFromCache() {
     selector.resize(selectorLen);
     if (file.read(&selector[0], selectorLen) != selectorLen) {
       rulesBySelector_.clear();
-      file.close();
       return false;
     }
 
     if (!hasRemainingBytes(CSS_FIXED_STYLE_BYTES)) {
       LOG_DBG("CSS", "Truncated CSS cache while reading style payload");
       rulesBySelector_.clear();
-      file.close();
       return false;
     }
 
@@ -839,28 +832,24 @@ bool CssParser::loadFromCache() {
 
     if (file.read(&enumVal, 1) != 1) {
       rulesBySelector_.clear();
-      file.close();
       return false;
     }
     style.textAlign = static_cast<CssTextAlign>(enumVal);
 
     if (file.read(&enumVal, 1) != 1) {
       rulesBySelector_.clear();
-      file.close();
       return false;
     }
     style.fontStyle = static_cast<CssFontStyle>(enumVal);
 
     if (file.read(&enumVal, 1) != 1) {
       rulesBySelector_.clear();
-      file.close();
       return false;
     }
     style.fontWeight = static_cast<CssFontWeight>(enumVal);
 
     if (file.read(&enumVal, 1) != 1) {
       rulesBySelector_.clear();
-      file.close();
       return false;
     }
     style.textDecoration = static_cast<CssTextDecoration>(enumVal);
@@ -883,7 +872,6 @@ bool CssParser::loadFromCache() {
         !readLength(style.paddingBottom) || !readLength(style.paddingLeft) || !readLength(style.paddingRight) ||
         !readLength(style.imageHeight) || !readLength(style.imageWidth)) {
       rulesBySelector_.clear();
-      file.close();
       return false;
     }
 
@@ -891,7 +879,6 @@ bool CssParser::loadFromCache() {
     uint8_t displayVal;
     if (file.read(&displayVal, 1) != 1) {
       rulesBySelector_.clear();
-      file.close();
       return false;
     }
     style.display = static_cast<CssDisplay>(displayVal);
@@ -900,7 +887,6 @@ bool CssParser::loadFromCache() {
     uint16_t definedBits = 0;
     if (file.read(&definedBits, sizeof(definedBits)) != sizeof(definedBits)) {
       rulesBySelector_.clear();
-      file.close();
       return false;
     }
     style.defined.textAlign = (definedBits & 1 << 0) != 0;
@@ -924,6 +910,5 @@ bool CssParser::loadFromCache() {
   }
 
   LOG_DBG("CSS", "Loaded %u rules from cache", ruleCount);
-  file.close();
   return true;
 }
