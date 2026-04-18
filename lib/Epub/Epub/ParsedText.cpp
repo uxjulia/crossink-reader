@@ -119,6 +119,28 @@ void ParsedText::addWord(std::string word, const EpdFontFamily::Style fontStyle,
 
   // --- FOCUS READING LOGIC BELOW ---
 
+  // Pre-reserve capacity to prevent mid-word heap reallocations.
+  size_t maxPossibleNewTokens = word.length();
+  size_t requiredSize = words.size() + maxPossibleNewTokens;
+
+  if (words.capacity() < requiredSize) {
+    // Emulate standard geometric growth (doubling) to ensure we don't reallocate on every word.
+    size_t newCapacity = words.capacity() * 2;
+
+    // Ensure the doubled capacity is actually enough for this specific word
+    if (newCapacity < requiredSize) {
+      newCapacity = requiredSize;
+    }
+    // Set a sensible minimum starting size so the first few words don't trigger tiny reallocations
+    if (newCapacity < 16) {
+      newCapacity = 16;
+    }
+
+    words.reserve(newCapacity);
+    wordStyles.reserve(newCapacity);
+    wordContinues.reserve(newCapacity);
+  }
+
   // Lambda helper to process and push individual sub-segments of the string
   // Use std::string_view to avoid heap allocations when slicing
   auto processSegment = [&](std::string_view segment, bool isWord, bool attach) {
