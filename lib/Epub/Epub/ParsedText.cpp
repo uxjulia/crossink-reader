@@ -120,16 +120,16 @@ void ParsedText::addWord(std::string word, const EpdFontFamily::Style fontStyle,
   // --- FOCUS READING LOGIC BELOW ---
 
   // Lambda helper to process and push individual sub-segments of the string
-  auto processSegment = [&](const std::string& segment, bool isWord, bool attach) {
+  // Use std::string_view to avoid heap allocations when slicing
+  auto processSegment = [&](std::string_view segment, bool isWord, bool attach) {
     if (!isWord) {
       // Punctuation and Numbers stay regular
-      words.push_back(segment);
+      words.emplace_back(segment);
       wordStyles.push_back(baseStyle);
       wordContinues.push_back(attach);
     } else {
-      // Word segments get the Focus Reading math applied
       size_t charCount = 0;
-      const unsigned char* countPtr = reinterpret_cast<const unsigned char*>(segment.c_str());
+      const unsigned char* countPtr = reinterpret_cast<const unsigned char*>(segment.data());
       const unsigned char* countEnd = countPtr + segment.length();
 
       while (countPtr < countEnd) {
@@ -142,21 +142,21 @@ void ParsedText::addWord(std::string word, const EpdFontFamily::Style fontStyle,
       if (targetBoldChars > 9) targetBoldChars = 9;
 
       if (targetBoldChars >= charCount) {
-        words.push_back(segment);
+        words.emplace_back(segment);
         wordStyles.push_back(static_cast<EpdFontFamily::Style>(baseStyle | EpdFontFamily::BOLD));
         wordContinues.push_back(attach);
       } else {
-        countPtr = reinterpret_cast<const unsigned char*>(segment.c_str());
+        countPtr = reinterpret_cast<const unsigned char*>(segment.data());
         for (size_t i = 0; i < targetBoldChars; ++i) {
           utf8NextCodepoint(&countPtr);
         }
-        size_t splitByteOffset = countPtr - reinterpret_cast<const unsigned char*>(segment.c_str());
+        size_t splitByteOffset = countPtr - reinterpret_cast<const unsigned char*>(segment.data());
 
-        words.push_back(segment.substr(0, splitByteOffset));
+        words.emplace_back(segment.substr(0, splitByteOffset));
         wordStyles.push_back(static_cast<EpdFontFamily::Style>(baseStyle | EpdFontFamily::BOLD));
         wordContinues.push_back(attach);
 
-        words.push_back(segment.substr(splitByteOffset));
+        words.emplace_back(segment.substr(splitByteOffset));
         wordStyles.push_back(baseStyle);
         wordContinues.push_back(true);
       }
@@ -181,8 +181,7 @@ void ParsedText::addWord(std::string word, const EpdFontFamily::Style fontStyle,
     // Whenever the character type flips, slice off the segment we just completed and process it
     if (isWordChar != inWordSegment) {
       size_t segmentLen = currentCpStart - segmentStart;
-      std::string segment =
-          word.substr(segmentStart - reinterpret_cast<const unsigned char*>(word.c_str()), segmentLen);
+      std::string_view segment(reinterpret_cast<const char*>(segmentStart), segmentLen);
 
       // Only the very first segment inherits the original attachToPrevious flag.
       // Every subsequent segment MUST attach=true so it glues seamlessly to the prefix.
@@ -197,7 +196,7 @@ void ParsedText::addWord(std::string word, const EpdFontFamily::Style fontStyle,
 
   // Process the final remaining segment
   size_t segmentLen = end - segmentStart;
-  std::string segment = word.substr(segmentStart - reinterpret_cast<const unsigned char*>(word.c_str()), segmentLen);
+  std::string_view segment(reinterpret_cast<const char*>(segmentStart), segmentLen);
   processSegment(segment, inWordSegment, isFirstSegment ? attachToPrevious : true);
 }
 // Consumes data to minimize memory usage
