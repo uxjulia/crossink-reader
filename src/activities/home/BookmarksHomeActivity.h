@@ -22,5 +22,4 @@ class BookmarksHomeActivity final : public Activity {
   ButtonNavigator buttonNavigator;
 
   void openBookmarkList(int bookIndex);
-  void writeProgressBin(const std::string& bookPath, uint16_t spineIndex, uint16_t pageNumber) const;
 };

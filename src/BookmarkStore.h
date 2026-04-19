@@ -1,4 +1,5 @@
 #pragma once
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -13,6 +14,7 @@ struct BookmarkedBookEntry {
   std::string bookTitle;
   std::string bookAuthor;
   std::string bookPath;
+  std::string bookType;
   uint8_t count;
 };
 

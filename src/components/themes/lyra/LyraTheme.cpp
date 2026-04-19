@@ -537,7 +537,8 @@ void LyraTheme::drawButtonMenu(GfxRenderer& renderer, Rect rect, int buttonCount
   const int totalPages = (buttonCount + pageItems - 1) / pageItems;
 
   if (totalPages > 1) {
-    const int scrollAreaHeight = maxVisibleItems * (menuMetrics.menuRowHeight + menuMetrics.menuSpacing) - menuMetrics.menuSpacing;
+    const int scrollAreaHeight =
+        maxVisibleItems * (menuMetrics.menuRowHeight + menuMetrics.menuSpacing) - menuMetrics.menuSpacing;
     const int scrollBarHeight = (scrollAreaHeight * pageItems) / buttonCount;
     const int currentPage = selectedIndex / pageItems;
     const int scrollBarY = rect.y + ((scrollAreaHeight - scrollBarHeight) * currentPage) / (totalPages - 1);
@@ -555,9 +556,9 @@ void LyraTheme::drawButtonMenu(GfxRenderer& renderer, Rect rect, int buttonCount
     if (totalPages > 1) {
       tileWidth -= (LyraMetrics::values.scrollBarWidth + LyraMetrics::values.scrollBarRightOffset);
     }
-    Rect tileRect =
-        Rect{rect.x + menuMetrics.contentSidePadding,
-             rect.y + displayIndex * (menuMetrics.menuRowHeight + menuMetrics.menuSpacing), tileWidth, menuMetrics.menuRowHeight};
+    Rect tileRect = Rect{rect.x + menuMetrics.contentSidePadding,
+                         rect.y + displayIndex * (menuMetrics.menuRowHeight + menuMetrics.menuSpacing), tileWidth,
+                         menuMetrics.menuRowHeight};
 
     const bool selected = selectedIndex == i;
 
@@ -583,8 +584,9 @@ void LyraTheme::drawButtonMenu(GfxRenderer& renderer, Rect rect, int buttonCount
         const int iconY = textY + 4;
         const int centerX = iconX + ribbonWidth / 2;
 
-        int polyX[5] = {iconX, iconX + ribbonWidth, iconX + ribbonWidth, centerX, iconX};
-        int polyY[5] = {iconY, iconY, iconY + ribbonHeight, iconY + ribbonHeight - notchSize, iconY + ribbonHeight};
+        const int polyX[5] = {iconX, iconX + ribbonWidth, iconX + ribbonWidth, centerX, iconX};
+        const int polyY[5] = {iconY, iconY, iconY + ribbonHeight, iconY + ribbonHeight - notchSize,
+                              iconY + ribbonHeight};
         renderer.fillPolygon(polyX, polyY, 5, true);
         textX += mainMenuIconSize + hPaddingInSelection + 2;
       } else {

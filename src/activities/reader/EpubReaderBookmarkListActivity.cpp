@@ -4,6 +4,7 @@
 #include <I18n.h>
 
 #include <algorithm>
+#include <cmath>
 #include <cstdio>
 
 #include "MappedInputManager.h"
@@ -119,7 +120,7 @@ void EpubReaderBookmarkListActivity::render(RenderLock&&) {
     renderer.drawText(UI_10_FONT_ID, marginLeft, rowY + 6, chapterTrunc.c_str(), !isSelected);
 
     char pageBuf[24];
-    snprintf(pageBuf, sizeof(pageBuf), "%d%%", static_cast<int>(bm.progress * 100.0f));
+    snprintf(pageBuf, sizeof(pageBuf), "%d%%", static_cast<int>(std::lround(bm.progress * 100.0)));
     renderer.drawText(SMALL_FONT_ID, marginLeft, rowY + 28, pageBuf, !isSelected);
   }
 

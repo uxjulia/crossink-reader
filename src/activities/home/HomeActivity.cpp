@@ -295,8 +295,7 @@ void HomeActivity::render(RenderLock&&) {
       Rect{0, menuStartY, pageWidth,
            pageHeight - (metrics.headerHeight + metrics.homeTopPadding + metrics.verticalSpacing * 2 +
                          metrics.buttonHintsHeight)},
-      menuCount, menuSelectedIndex,
-      [&menuItems](int index) { return std::string(menuItems[index]); },
+      menuCount, menuSelectedIndex, [&menuItems](int index) { return std::string(menuItems[index]); },
       [&menuIcons](int index) { return menuIcons[index]; });
 
   const auto labels = mappedInput.mapLabels("", tr(STR_SELECT), tr(STR_DIR_UP), tr(STR_DIR_DOWN));

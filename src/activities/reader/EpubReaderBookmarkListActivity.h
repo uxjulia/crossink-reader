@@ -19,7 +19,7 @@ class EpubReaderBookmarkListActivity final : public Activity {
   bool isReaderActivity() const override { return true; }
 
  private:
-  const std::vector<Bookmark>& bookmarks;
+  std::vector<Bookmark> bookmarks;
   int selectedIndex = 0;
   ButtonNavigator buttonNavigator;
 

@@ -3,9 +3,9 @@
 #include <HalStorage.h>
 #include <Logging.h>
 #include <Serialization.h>
+#include <uzlib.h>
 
 #include <algorithm>
-#include <functional>
 
 namespace {
 constexpr uint8_t VERSION = 2;
@@ -24,8 +24,8 @@ bool BookmarkStore::loadForBook(const std::string& filePath, const std::string& 
   bookmarks.clear();
   bookmarks.reserve(MAX_BOOKMARKS);
 
-  const size_t hash = std::hash<std::string>{}(filePath);
-  storeFilePath = std::string(BOOKMARKS_DIR) + "/" + bookType + "_" + std::to_string(hash) + ".bin";
+  const uint32_t crc = uzlib_crc32(filePath.data(), static_cast<unsigned int>(filePath.size()), 0);
+  storeFilePath = std::string(BOOKMARKS_DIR) + "/" + bookType + "_" + std::to_string(crc) + ".bin";
 
   if (!Storage.exists(storeFilePath.c_str())) {
     LOG_DBG("BKS", "No bookmark file for this book");
@@ -63,6 +63,7 @@ void BookmarkStore::addBookmark(uint16_t spineIndex, float progress, const char*
 }
 
 void BookmarkStore::removeBookmarkForPage(uint16_t spineIndex, float pageProgress, int pageCount) {
+  if (pageCount <= 0) return;
   float pageSlice = 1.0f / static_cast<float>(pageCount);
   float pageStart = pageProgress;
   float pageEnd = pageProgress + pageSlice;
@@ -78,14 +79,14 @@ void BookmarkStore::removeBookmarkForPage(uint16_t spineIndex, float pageProgres
 }
 
 bool BookmarkStore::hasBookmarkForPage(uint16_t spineIndex, float pageProgress, int pageCount) {
+  if (pageCount <= 0) return false;
   float pageSlice = 1.0f / static_cast<float>(pageCount);
   float pageStart = pageProgress;
   float pageEnd = pageProgress + pageSlice;
 
-  for (const auto& b : bookmarks) {
-    if (b.spineIndex == spineIndex && b.progress >= pageStart && b.progress < pageEnd) return true;
-  }
-  return false;
+  return std::any_of(bookmarks.begin(), bookmarks.end(), [&](const Bookmark& b) {
+    return b.spineIndex == spineIndex && b.progress >= pageStart && b.progress < pageEnd;
+  });
 }
 
 void BookmarkStore::saveToFile() {
@@ -94,8 +95,6 @@ void BookmarkStore::saveToFile() {
 }
 
 void BookmarkStore::clearAll() {
-  bookmarks.clear();
-  dirty = false;
   if (!storeFilePath.empty() && Storage.exists(storeFilePath.c_str())) {
     if (!Storage.remove(storeFilePath.c_str())) {
       LOG_ERR("BKS", "Failed to delete bookmark file");
@@ -103,6 +102,8 @@ void BookmarkStore::clearAll() {
     }
     LOG_DBG("BKS", "Bookmark file deleted");
   }
+  bookmarks.clear();
+  dirty = false;
 }
 
 bool BookmarkStore::readFromFile() {
@@ -128,20 +129,46 @@ bool BookmarkStore::readFromFile() {
     return false;
   }
 
-  // Skip stored header strings — we already have title/author/path in memory
   std::string tmp;
-  serialization::readString(f, tmp);
-  serialization::readString(f, tmp);
-  serialization::readString(f, tmp);
+  serialization::readString(f, tmp);  // title — not validated
+  serialization::readString(f, tmp);  // author — not validated
+  std::string storedPath;
+  serialization::readString(f, storedPath);
+  if (storedPath != bookFilePath) {
+    LOG_ERR("BKS", "Bookmark file path mismatch, file may belong to a different book");
+    f.close();
+    return false;
+  }
 
   bookmarks.clear();
   bookmarks.reserve(count);
   for (uint8_t i = 0; i < count; i++) {
     Bookmark bm{};
+    if (f.available() < static_cast<int>(sizeof(bm.spineIndex))) {
+      LOG_ERR("BKS", "Bookmark file truncated at spineIndex, record %u", i);
+      f.close();
+      return false;
+    }
     serialization::readPod(f, bm.spineIndex);
+    if (f.available() < static_cast<int>(sizeof(bm.progress))) {
+      LOG_ERR("BKS", "Bookmark file truncated at progress, record %u", i);
+      f.close();
+      return false;
+    }
     serialization::readPod(f, bm.progress);
+    if (f.available() < static_cast<int>(sizeof(bm.timestamp))) {
+      LOG_ERR("BKS", "Bookmark file truncated at timestamp, record %u", i);
+      f.close();
+      return false;
+    }
     serialization::readPod(f, bm.timestamp);
-    f.read(bm.chapterTitle, sizeof(bm.chapterTitle));
+    const int chRead = f.read(bm.chapterTitle, sizeof(bm.chapterTitle));
+    bm.chapterTitle[sizeof(bm.chapterTitle) - 1] = '\0';
+    if (chRead != static_cast<int>(sizeof(bm.chapterTitle))) {
+      LOG_ERR("BKS", "Bookmark file truncated at chapterTitle, record %u", i);
+      f.close();
+      return false;
+    }
     bookmarks.push_back(bm);
   }
 
@@ -207,7 +234,14 @@ bool BookmarkStore::getAllBookmarkedBooks(std::vector<BookmarkedBookEntry>& out)
 
     if (path.empty() || count == 0) continue;
 
-    out.push_back({std::move(title), std::move(author), std::move(path), count});
+    std::string bookType = "epub";
+    const std::string nameStr = name.c_str();
+    size_t underscorePos = nameStr.find('_');
+    if (underscorePos != std::string::npos) {
+      bookType = nameStr.substr(0, underscorePos);
+    }
+
+    out.push_back({std::move(title), std::move(author), std::move(path), std::move(bookType), count});
   }
 
   return true;

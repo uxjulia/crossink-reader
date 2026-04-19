@@ -1,12 +1,11 @@
 #include "BookmarksHomeActivity.h"
 
 #include <GfxRenderer.h>
-#include <HalStorage.h>
 #include <I18n.h>
 
-#include "CrossPointState.h"
 #include "../reader/EpubReaderBookmarkListActivity.h"
 #include "BookmarkStore.h"
+#include "CrossPointState.h"
 #include "MappedInputManager.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
@@ -93,7 +92,7 @@ void BookmarksHomeActivity::render(RenderLock&&) {
 
 void BookmarksHomeActivity::openBookmarkList(int bookIndex) {
   const BookmarkedBookEntry entry = books[bookIndex];
-  BOOKMARKS.loadForBook(entry.bookPath, entry.bookTitle, entry.bookAuthor, "epub");
+  BOOKMARKS.loadForBook(entry.bookPath, entry.bookTitle, entry.bookAuthor, entry.bookType);
 
   startActivityForResult(
       std::make_unique<EpubReaderBookmarkListActivity>(renderer, mappedInput, BOOKMARKS.getBookmarks()),
@@ -108,21 +107,4 @@ void BookmarksHomeActivity::openBookmarkList(int bookIndex) {
           requestUpdate();
         }
       });
-}
-
-void BookmarksHomeActivity::writeProgressBin(const std::string& bookPath, uint16_t spineIndex,
-                                             uint16_t pageNumber) const {
-  const std::string cachePath = "/.crosspoint/epub_" + std::to_string(std::hash<std::string>{}(bookPath));
-  FsFile f;
-  if (Storage.openFileForWrite("BHA", cachePath + "/progress.bin", f)) {
-    uint8_t data[4];
-    data[0] = spineIndex & 0xFF;
-    data[1] = (spineIndex >> 8) & 0xFF;
-    data[2] = pageNumber & 0xFF;
-    data[3] = (pageNumber >> 8) & 0xFF;
-    f.write(data, 4);
-    f.close();
-  } else {
-    LOG_ERR("BHA", "Could not write progress.bin for bookmark navigation");
-  }
 }
