@@ -15,6 +15,8 @@
 
 #include "../reader/BookReadingStats.h"
 #include "../reader/BookStatsActivity.h"
+#include "BookmarkStore.h"
+#include "BookmarksHomeActivity.h"
 #include "CrossPointSettings.h"
 #include "CrossPointState.h"
 #include "MappedInputManager.h"
@@ -31,6 +33,9 @@ int HomeActivity::getMenuItemCount() const {
     count++;
   }
   if (hasReadingStats) {
+    count++;
+  }
+  if (hasBookmarks) {
     count++;
   }
   return count;
@@ -118,6 +123,13 @@ void HomeActivity::onEnter() {
 
   // Check if OPDS browser URL is configured
   hasOpdsUrl = strlen(SETTINGS.opdsServerUrl) > 0;
+
+  // Check if any books have bookmarks
+  {
+    std::vector<BookmarkedBookEntry> bookmarkedBooks;
+    BookmarkStore::getAllBookmarkedBooks(bookmarkedBooks);
+    hasBookmarks = !bookmarkedBooks.empty();
+  }
 
   selectorIndex = 0;
 
@@ -208,6 +220,7 @@ void HomeActivity::loop() {
     const int recentsIdx = idx++;
     const int opdsLibraryIdx = hasOpdsUrl ? idx++ : -1;
     const int readingStatsIdx = hasReadingStats ? idx++ : -1;
+    const int bookmarksIdx = hasBookmarks ? idx++ : -1;
     const int fileTransferIdx = idx++;
     const int settingsIdx = idx;
 
@@ -221,6 +234,8 @@ void HomeActivity::loop() {
       onOpdsBrowserOpen();
     } else if (menuSelectedIndex == readingStatsIdx) {
       onReadingStatsOpen();
+    } else if (menuSelectedIndex == bookmarksIdx) {
+      onBookmarksOpen();
     } else if (menuSelectedIndex == fileTransferIdx) {
       onFileTransferOpen();
     } else if (menuSelectedIndex == settingsIdx) {
@@ -262,14 +277,33 @@ void HomeActivity::render(RenderLock&&) {
     menuIcons.insert(menuIcons.begin() + insertPos, Chart);
   }
 
+  if (hasBookmarks) {
+    int insertPos = 2;
+    if (hasOpdsUrl) insertPos++;
+    if (hasReadingStats) insertPos++;
+    menuItems.insert(menuItems.begin() + insertPos, tr(STR_BOOKMARKS));
+    menuIcons.insert(menuIcons.begin() + insertPos, Book);
+  }
+
+  const int menuStartY = metrics.homeTopPadding + metrics.homeCoverTileHeight + metrics.verticalSpacing;
+  const int menuEndY = pageHeight - metrics.buttonHintsHeight;
+  const int visibleMenuItems = std::max(1, (menuEndY - menuStartY) / (metrics.menuRowHeight + metrics.menuSpacing));
+  const int menuCount = static_cast<int>(menuItems.size());
+  const int menuSelectedIndex = selectorIndex - static_cast<int>(recentBooks.size());
+  const int viewStart = menuSelectedIndex >= 0
+                            ? std::max(0, std::min(menuSelectedIndex - (visibleMenuItems - 1),
+                                                   std::max(0, menuCount - visibleMenuItems)))
+                            : 0;
+  const int viewCount = std::min(visibleMenuItems, menuCount - viewStart);
+
   GUI.drawButtonMenu(
       renderer,
-      Rect{0, metrics.homeTopPadding + metrics.homeCoverTileHeight + metrics.verticalSpacing, pageWidth,
+      Rect{0, menuStartY, pageWidth,
            pageHeight - (metrics.headerHeight + metrics.homeTopPadding + metrics.verticalSpacing * 2 +
                          metrics.buttonHintsHeight)},
-      static_cast<int>(menuItems.size()), selectorIndex - recentBooks.size(),
-      [&menuItems](int index) { return std::string(menuItems[index]); },
-      [&menuIcons](int index) { return menuIcons[index]; });
+      viewCount, menuSelectedIndex - viewStart,
+      [&menuItems, viewStart](int index) { return std::string(menuItems[viewStart + index]); },
+      [&menuIcons, viewStart](int index) { return menuIcons[viewStart + index]; });
 
   const auto labels = mappedInput.mapLabels("", tr(STR_SELECT), tr(STR_DIR_UP), tr(STR_DIR_DOWN));
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
@@ -301,4 +335,9 @@ void HomeActivity::onReadingStatsOpen() {
   startActivityForResult(
       std::make_unique<BookStatsActivity>(renderer, mappedInput, recentBooks[0].title, currentBookStats, globalStats),
       [this](const ActivityResult&) { requestUpdate(); });
+}
+
+void HomeActivity::onBookmarksOpen() {
+  startActivityForResult(std::make_unique<BookmarksHomeActivity>(renderer, mappedInput),
+                         [this](const ActivityResult&) { requestUpdate(); });
 }
