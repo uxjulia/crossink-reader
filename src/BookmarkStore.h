@@ -3,11 +3,15 @@
 #include <string>
 #include <vector>
 
+// chapterTitle is always NUL-terminated within BOOKMARK_CHAPTER_TITLE_MAX bytes.
+// This size is part of the on-disk format — do not change without incrementing the file version.
+inline constexpr size_t BOOKMARK_CHAPTER_TITLE_MAX = 48;
+
 struct Bookmark {
   uint16_t spineIndex;
   float progress;
   uint32_t timestamp;
-  char chapterTitle[48];
+  char chapterTitle[BOOKMARK_CHAPTER_TITLE_MAX];
 };
 
 struct BookmarkedBookEntry {
@@ -40,7 +44,7 @@ class BookmarkStore {
                    const std::string& bookType);
   void unload();
 
-  void addBookmark(uint16_t spineIndex, float progress, const char* chapterTitle);
+  void addBookmark(uint16_t spineIndex, float progress, int pageCount, const char* chapterTitle);
   void removeBookmarkForPage(uint16_t spineIndex, float pageProgress, int pageCount);
   bool hasBookmarkForPage(uint16_t spineIndex, float pageProgress, int pageCount);
   const std::vector<Bookmark>& getBookmarks() const { return bookmarks; }
@@ -50,6 +54,9 @@ class BookmarkStore {
 
   // Remove all bookmarks for the current book and delete its bookmark file.
   void clearAll();
+
+  // Returns true if any bookmark files exist on disk (directory scan, no file parsing).
+  static bool hasAnyBookmarks();
 
   // Scan /.crosspoint/bookmarks/ and populate `out` with one entry per book that has bookmarks.
   // Reads only the file header (does not load full bookmark records).

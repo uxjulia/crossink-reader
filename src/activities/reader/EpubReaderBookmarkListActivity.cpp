@@ -49,6 +49,8 @@ void EpubReaderBookmarkListActivity::loop() {
   }
 
   const int total = static_cast<int>(bookmarks.size());
+  if (total == 0) return;
+
   const int pageItems = getPageItems();
 
   buttonNavigator.onNextRelease([this, total] {

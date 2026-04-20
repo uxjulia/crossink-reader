@@ -17,6 +17,11 @@ BookmarkStore BookmarkStore::instance;
 
 bool BookmarkStore::loadForBook(const std::string& filePath, const std::string& title, const std::string& author,
                                 const std::string& bookType) {
+  if (bookType != "epub" && bookType != "xtc" && bookType != "txt") {
+    LOG_ERR("BKS", "Unknown book type: %s", bookType.c_str());
+    return false;
+  }
+
   bookFilePath = filePath;
   bookTitle = title;
   bookAuthor = author;
@@ -45,7 +50,16 @@ void BookmarkStore::unload() {
   dirty = false;
 }
 
-void BookmarkStore::addBookmark(uint16_t spineIndex, float progress, const char* chapterTitle) {
+void BookmarkStore::addBookmark(uint16_t spineIndex, float progress, int pageCount, const char* chapterTitle) {
+  if (pageCount > 0) {
+    float pageSlice = 1.0f / static_cast<float>(pageCount);
+    float pageStart = progress;
+    float pageEnd = progress + pageSlice;
+    std::erase_if(bookmarks, [&](const Bookmark& b) {
+      return b.spineIndex == spineIndex && b.progress >= pageStart && b.progress < pageEnd;
+    });
+  }
+
   if (bookmarks.size() >= MAX_BOOKMARKS) {
     LOG_ERR("BKS", "Bookmark limit (%d) reached", MAX_BOOKMARKS);
     return;
@@ -205,6 +219,11 @@ bool BookmarkStore::writeToFile() const {
   return true;
 }
 
+bool BookmarkStore::hasAnyBookmarks() {
+  if (!Storage.exists(BOOKMARKS_DIR)) return false;
+  return !Storage.listFiles(BOOKMARKS_DIR).empty();
+}
+
 bool BookmarkStore::getAllBookmarkedBooks(std::vector<BookmarkedBookEntry>& out) {
   if (!Storage.exists(BOOKMARKS_DIR)) return true;
 
@@ -215,6 +234,10 @@ bool BookmarkStore::getAllBookmarkedBooks(std::vector<BookmarkedBookEntry>& out)
     FsFile f;
     if (!Storage.openFileForRead("BKS", fullPath, f)) continue;
 
+    if (f.available() < static_cast<int>(sizeof(uint8_t))) {
+      f.close();
+      continue;
+    }
     uint8_t version;
     serialization::readPod(f, version);
     if (version != VERSION) {
@@ -223,16 +246,33 @@ bool BookmarkStore::getAllBookmarkedBooks(std::vector<BookmarkedBookEntry>& out)
       continue;
     }
 
+    if (f.available() < static_cast<int>(sizeof(uint8_t))) {
+      f.close();
+      continue;
+    }
     uint8_t count;
     serialization::readPod(f, count);
 
+    // Reads a length-prefixed string, returning false if the file is truncated.
+    auto readCheckedString = [&f](std::string& s) -> bool {
+      uint32_t len;
+      if (f.available() < static_cast<int>(sizeof(len))) return false;
+      serialization::readPod(f, len);
+      if (f.available() < static_cast<int>(len)) return false;
+      s.resize(len);
+      f.read(reinterpret_cast<uint8_t*>(&s[0]), len);
+      return true;
+    };
+
     std::string title, author, path;
-    serialization::readString(f, title);
-    serialization::readString(f, author);
-    serialization::readString(f, path);
+    if (!readCheckedString(title) || !readCheckedString(author) || !readCheckedString(path)) {
+      f.close();
+      continue;
+    }
     f.close();
 
     if (path.empty() || count == 0) continue;
+    if (!Storage.exists(path.c_str())) continue;
 
     std::string bookType = "epub";
     const std::string nameStr = name.c_str();

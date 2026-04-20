@@ -124,12 +124,8 @@ void HomeActivity::onEnter() {
   // Check if OPDS browser URL is configured
   hasOpdsUrl = strlen(SETTINGS.opdsServerUrl) > 0;
 
-  // Check if any books have bookmarks
-  {
-    std::vector<BookmarkedBookEntry> bookmarkedBooks;
-    BookmarkStore::getAllBookmarkedBooks(bookmarkedBooks);
-    hasBookmarks = !bookmarkedBooks.empty();
-  }
+  // Check if any books have bookmarks (directory scan only, no file parsing)
+  hasBookmarks = BookmarkStore::hasAnyBookmarks();
 
   selectorIndex = 0;
 

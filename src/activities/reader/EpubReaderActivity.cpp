@@ -514,7 +514,7 @@ void EpubReaderActivity::onReaderMenuConfirm(EpubReaderMenuActivity::MenuAction 
           titleStr = epub->getTocItem(tocIndex).title;
           chapterTitle = titleStr.c_str();
         }
-        BOOKMARKS.addBookmark(spine, progress, chapterTitle);
+        BOOKMARKS.addBookmark(spine, progress, section->pageCount, chapterTitle);
         bookmarkFeedbackIsAdd = true;
       }
       pendingBookmarkFeedback = true;

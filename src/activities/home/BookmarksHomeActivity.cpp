@@ -26,8 +26,6 @@ void BookmarksHomeActivity::onExit() {
 }
 
 void BookmarksHomeActivity::loop() {
-  const int pageItems = UITheme::getInstance().getNumberOfItemsPerPage(renderer, true, false, true, true);
-
   if (mappedInput.wasReleased(MappedInputManager::Button::Back)) {
     onGoHome();
     return;
@@ -40,6 +38,7 @@ void BookmarksHomeActivity::loop() {
     return;
   }
 
+  const int pageItems = UITheme::getInstance().getNumberOfItemsPerPage(renderer, true, false, true, true);
   const int listSize = static_cast<int>(books.size());
 
   buttonNavigator.onNextRelease([this, listSize] {
@@ -98,11 +97,16 @@ void BookmarksHomeActivity::openBookmarkList(int bookIndex) {
       std::make_unique<EpubReaderBookmarkListActivity>(renderer, mappedInput, BOOKMARKS.getBookmarks()),
       [this, entry](const ActivityResult& result) {
         if (!result.isCancelled) {
-          const auto& bm = std::get<BookmarkResult>(result.data);
-          APP_STATE.pendingBookmarkSpine = bm.spineIndex;
-          APP_STATE.pendingBookmarkProgress = bm.progress;
-          APP_STATE.saveToFile();
-          onSelectBook(entry.bookPath);
+          const auto* bm = std::get_if<BookmarkResult>(&result.data);
+          if (bm) {
+            APP_STATE.pendingBookmarkSpine = bm->spineIndex;
+            APP_STATE.pendingBookmarkProgress = bm->progress;
+            APP_STATE.saveToFile();
+            onSelectBook(entry.bookPath);
+          } else {
+            LOG_ERR("BKA", "openBookmarkList: result.data holds unexpected variant type, not BookmarkResult");
+            requestUpdate();
+          }
         } else {
           requestUpdate();
         }

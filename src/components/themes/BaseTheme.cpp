@@ -627,6 +627,8 @@ void BaseTheme::drawButtonMenu(GfxRenderer& renderer, Rect rect, int buttonCount
   const int pageItems = maxVisibleItems;
   const int totalPages = (buttonCount + pageItems - 1) / pageItems;
 
+  const int pageStartIndex = (selectedIndex / pageItems) * pageItems;
+
   if (totalPages > 1) {
     constexpr int indicatorWidth = 20;
     constexpr int arrowSize = 6;
@@ -638,23 +640,25 @@ void BaseTheme::drawButtonMenu(GfxRenderer& renderer, Rect rect, int buttonCount
     const int indicatorTop = rect.y + BaseMetrics::values.verticalSpacing;
     const int indicatorBottom = indicatorTop + menuHeight - arrowSize;
 
-    // Draw up arrow at top (^) - narrow point at top, wide base at bottom
-    for (int i = 0; i < arrowSize; ++i) {
-      const int lineWidth = 1 + i * 2;
-      const int startX = centerX - i;
-      renderer.drawLine(startX, indicatorTop + i, startX + lineWidth - 1, indicatorTop + i);
+    // Draw up arrow (^) only when there are items above the current page
+    if (pageStartIndex > 0) {
+      for (int i = 0; i < arrowSize; ++i) {
+        const int lineWidth = 1 + i * 2;
+        const int startX = centerX - i;
+        renderer.drawLine(startX, indicatorTop + i, startX + lineWidth - 1, indicatorTop + i);
+      }
     }
 
-    // Draw down arrow at bottom (v) - wide base at top, narrow point at bottom
-    for (int i = 0; i < arrowSize; ++i) {
-      const int lineWidth = 1 + (arrowSize - 1 - i) * 2;
-      const int startX = centerX - (arrowSize - 1 - i);
-      renderer.drawLine(startX, indicatorBottom - arrowSize + 1 + i, startX + lineWidth - 1,
-                        indicatorBottom - arrowSize + 1 + i);
+    // Draw down arrow (v) only when there are items below the current page
+    if (pageStartIndex + pageItems < buttonCount) {
+      for (int i = 0; i < arrowSize; ++i) {
+        const int lineWidth = 1 + (arrowSize - 1 - i) * 2;
+        const int startX = centerX - (arrowSize - 1 - i);
+        renderer.drawLine(startX, indicatorBottom - arrowSize + 1 + i, startX + lineWidth - 1,
+                          indicatorBottom - arrowSize + 1 + i);
+      }
     }
   }
-
-  const int pageStartIndex = (selectedIndex / pageItems) * pageItems;
 
   for (int i = pageStartIndex; i < buttonCount && i < pageStartIndex + pageItems; ++i) {
     const int displayIndex = i - pageStartIndex;
@@ -780,7 +784,7 @@ void BaseTheme::drawStatusBar(GfxRenderer& renderer, const float bookProgress, c
 
   if (isPageBookmarked) {
     const int bmX = metrics.statusBarHorizontalMargin + orientedMarginLeft + 1;
-    const int bmY = textY + (metrics.batteryHeight - bmIconH) / 2 + 5;
+    const int bmY = textY + (metrics.batteryHeight - bmIconH) / 2;
     renderer.fillRect(bmX, bmY, bmIconW, bmIconH, true);
     const int xNotch[3] = {bmX, bmX + bmIconW, bmX + bmIconW / 2};
     const int yNotch[3] = {bmY + bmIconH, bmY + bmIconH, bmY + bmIconH - bmNotchDepth};
