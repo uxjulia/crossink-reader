@@ -26,7 +26,7 @@ font_stack = [freetype.Face(f) for f in args.fontstack]
 is2Bit = args.is2Bit
 size = args.size
 font_name = args.name
-load_flags = freetype.FT_LOAD_RENDER
+load_flags = freetype.FT_LOAD_RENDER | freetype.FT_LOAD_NO_BITMAP
 if args.force_autohint:
     load_flags |= freetype.FT_LOAD_FORCE_AUTOHINT
 

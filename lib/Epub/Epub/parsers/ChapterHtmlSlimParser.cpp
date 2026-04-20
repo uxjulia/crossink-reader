@@ -424,8 +424,17 @@ void XMLCALL ChapterHtmlSlimParser::startElement(void* userData, const XML_Char*
                   }
                   if (displayHeight < 1) displayHeight = 1;
                   LOG_DBG("EHP", "Display size from CSS width: %dx%d", displayWidth, displayHeight);
+                } else if (self->currentTextBlock != nullptr && dims.width > 0 && dims.height > 0) {
+                  // Inline image with no CSS dimensions (e.g. emoji PNG inside a paragraph).
+                  // Size to the font ascender height to match surrounding text.
+                  displayHeight = static_cast<int>(emSize + 0.5f);
+                  if (displayHeight < 1) displayHeight = 1;
+                  displayWidth =
+                      static_cast<int>(displayHeight * (static_cast<float>(dims.width) / dims.height) + 0.5f);
+                  if (displayWidth < 1) displayWidth = 1;
+                  LOG_DBG("EHP", "Display size (inline, no CSS): %dx%d", displayWidth, displayHeight);
                 } else {
-                  // Scale to fit viewport while maintaining aspect ratio
+                  // Block image with no CSS dimensions: scale to fit viewport while maintaining aspect ratio
                   int maxWidth = self->viewportWidth;
                   int maxHeight = self->viewportHeight;
                   float scaleX = (dims.width > maxWidth) ? (float)maxWidth / dims.width : 1.0f;
