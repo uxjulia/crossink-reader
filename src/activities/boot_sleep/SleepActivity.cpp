@@ -183,6 +183,7 @@ void SleepActivity::renderBitmapSleepScreen(const Bitmap& bitmap) const {
 
   LOG_DBG("SLP", "drawing to %d x %d", x, y);
   renderer.clearScreen();
+  renderer.displayBuffer(HalDisplay::FAST_REFRESH);
 
   const bool hasGreyscale = bitmap.hasGreyscale() &&
                             SETTINGS.sleepScreenCoverFilter == CrossPointSettings::SLEEP_SCREEN_COVER_FILTER::NO_FILTER;
@@ -193,7 +194,7 @@ void SleepActivity::renderBitmapSleepScreen(const Bitmap& bitmap) const {
     renderer.invertScreen();
   }
 
-  renderer.displayBuffer(HalDisplay::HALF_REFRESH);
+  renderer.displayBuffer(HalDisplay::FAST_REFRESH);
 
   if (hasGreyscale) {
     bitmap.rewindToData();
