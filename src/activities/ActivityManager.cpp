@@ -295,10 +295,10 @@ void RenderLock::unlock() {
 }
 
 /**
+ * Checks if renderingMutex is held by any task, including the calling task.
  *
- * Checks if renderingMutex is busy.
+ * @return true if renderingMutex has an owner (any task), false otherwise.
  *
- * @return true if renderingMutex is busy, otherwise false.
- *
+ * @note Must not be called from ISR context — xSemaphoreGetMutexHolder is not ISR-safe.
  */
-bool RenderLock::peek() { return xSemaphoreGetMutexHolder(activityManager.renderingMutex) != nullptr; };
+bool RenderLock::peek() { return xSemaphoreGetMutexHolder(activityManager.renderingMutex) != nullptr; }

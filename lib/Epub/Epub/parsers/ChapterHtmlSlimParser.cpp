@@ -189,10 +189,6 @@ void XMLCALL ChapterHtmlSlimParser::startElement(void* userData, const XML_Char*
     return;
   }
 
-  if (strcmp(name, "p") == 0) {
-    self->xpathParagraphIndex++;
-  }
-
   // Extract class, style, and id attributes
   std::string classAttr;
   std::string styleAttr;
@@ -625,6 +621,9 @@ void XMLCALL ChapterHtmlSlimParser::startElement(void* userData, const XML_Char*
     } else {
       self->currentCssStyle = cssStyle;
       self->startNewTextBlock(userAlignmentBlockStyle);
+      if (strcmp(name, "p") == 0) {
+        self->xpathParagraphIndex++;
+      }
       self->updateEffectiveInlineStyle();
 
       if (strcmp(name, "li") == 0) {
