@@ -16,7 +16,7 @@
 
 void ActivityManager::begin() {
   xTaskCreate(&renderTaskTrampoline, "ActivityManagerRender",
-              8192,              // Stack size
+              16384,             // Stack size — increased from 8192; createSectionFile() puts ChapterHtmlSlimParser (~700 bytes) on stack during silentIndexNextChapterIfNeeded
               this,              // Parameters
               1,                 // Priority
               &renderTaskHandle  // Task handle
@@ -300,4 +300,4 @@ void RenderLock::unlock() {
  * @return true if renderingMutex is busy, otherwise false.
  *
  */
-bool RenderLock::peek() { return xQueuePeek(activityManager.renderingMutex, NULL, 0) != pdTRUE; };
+bool RenderLock::peek() { return xSemaphoreGetMutexHolder(activityManager.renderingMutex) != nullptr; };
