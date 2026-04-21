@@ -27,8 +27,7 @@ std::unique_ptr<PageLine> PageLine::deserialize(FsFile& file) {
 }
 
 void PageImage::render(GfxRenderer& renderer, const int fontId, const int xOffset, const int yOffset) {
-  // Images are only rendered in BW mode; grayscale passes are for text anti-aliasing only
-  if (renderer.getRenderMode() != GfxRenderer::BW) return;
+  // Images don't use fontId or text rendering
   imageBlock->render(renderer, xPos + xOffset, yPos + yOffset);
 }
 

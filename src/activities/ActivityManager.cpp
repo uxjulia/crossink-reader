@@ -16,9 +16,10 @@
 
 void ActivityManager::begin() {
   xTaskCreate(&renderTaskTrampoline, "ActivityManagerRender",
-              16384,             // Stack size — increased from 8192; createSectionFile() puts ChapterHtmlSlimParser (~700 bytes) on stack during silentIndexNextChapterIfNeeded
-              this,              // Parameters
-              1,                 // Priority
+              16384,  // Stack size — increased from 8192; createSectionFile() puts ChapterHtmlSlimParser (~700 bytes)
+                      // on stack during silentIndexNextChapterIfNeeded
+              this,   // Parameters
+              1,      // Priority
               &renderTaskHandle  // Task handle
   );
   assert(renderTaskHandle != nullptr && "Failed to create render task");
