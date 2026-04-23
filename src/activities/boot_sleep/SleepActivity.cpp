@@ -432,6 +432,10 @@ void SleepActivity::renderCoverSleepScreen() const {
       }
 
       LOG_DBG("SLP", "Direct XTCH plane render: %ux%u", lastXtc.getPageWidth(), lastXtc.getPageHeight());
+      if (!APP_STATE.lastSleepFromReader) {
+        renderer.clearScreen();
+        renderer.displayBuffer(HalDisplay::HALF_REFRESH);
+      }
       renderer.displayXtchPlanes(plane1, plane2, lastXtc.getPageWidth(), lastXtc.getPageHeight());
       free(plane1);
       free(plane2);
