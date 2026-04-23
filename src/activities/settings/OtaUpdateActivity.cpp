@@ -52,6 +52,8 @@ void OtaUpdateActivity::onWifiSelectionComplete(const bool success) {
 
 void OtaUpdateActivity::onEnter() {
   Activity::onEnter();
+  activityTaskHandle = xTaskGetCurrentTaskHandle();
+  otaCancelRequested = false;
 
   // Turn on WiFi immediately
   LOG_DBG("OTA", "Turning on WiFi...");

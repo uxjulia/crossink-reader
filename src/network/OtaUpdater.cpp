@@ -3,7 +3,7 @@
 bool OtaUpdater::isUpdateNewer() const { return false; }
 const std::string& OtaUpdater::getLatestVersion() const { return latestVersion; }
 OtaUpdater::OtaUpdaterError OtaUpdater::checkForUpdate() { return NO_UPDATE; }
-OtaUpdater::OtaUpdaterError OtaUpdater::installUpdate() { return NO_UPDATE; }
+OtaUpdater::OtaUpdaterError OtaUpdater::installUpdate(volatile bool*) { return NO_UPDATE; }
 #else
 #include <ArduinoJson.h>
 #include <Logging.h>
@@ -213,7 +213,11 @@ bool OtaUpdater::isUpdateNewer() const {
 
 const std::string& OtaUpdater::getLatestVersion() const { return latestVersion; }
 
-OtaUpdater::OtaUpdaterError OtaUpdater::installUpdate() {
+OtaUpdater::OtaUpdaterError OtaUpdater::installUpdate(volatile bool* cancelRequested) {
+  const auto isCancellationRequested = [cancelRequested]() -> bool {
+    return cancelRequested != nullptr && *cancelRequested;
+  };
+
   if (!isUpdateNewer()) {
     return UPDATE_OLDER_ERROR;
   }
