@@ -549,7 +549,8 @@ void LyraTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std:
       renderer.drawText(UI_10_FONT_ID, textX, titleY, progressLabel, true, EpdFontFamily::BOLD);
       renderer.drawRect(textX, progressBarY, progressBarWidth, progressBarHeight, true);
       if (filledWidth > 0) {
-        renderer.fillRect(textX + 1, progressBarY + 1, std::max(0, filledWidth - 2), std::max(0, progressBarHeight - 2));
+        renderer.fillRect(textX + 1, progressBarY + 1, std::max(0, filledWidth - 2),
+                          std::max(0, progressBarHeight - 2));
       }
     }
   } else {
