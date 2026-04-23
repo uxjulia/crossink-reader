@@ -19,6 +19,7 @@
 
 void SleepActivity::onEnter() {
   Activity::onEnter();
+  GUI.drawPopup(renderer, tr(STR_ENTERING_SLEEP));
 
   if (APP_STATE.lastSleepFromReader) {
     ReaderUtils::applyOrientation(renderer, SETTINGS.orientation);
@@ -408,12 +409,14 @@ void SleepActivity::renderCoverSleepScreen() const {
       const size_t planeSize = (static_cast<size_t>(lastXtc.getPageWidth()) * lastXtc.getPageHeight() + 7) / 8;
       uint8_t* plane1 = static_cast<uint8_t*>(malloc(planeSize));
       if (!plane1) {
-        LOG_ERR("SLP", "Failed to alloc plane1 for direct XTCH render (%lu bytes)", static_cast<unsigned long>(planeSize));
+        LOG_ERR("SLP", "Failed to alloc plane1 for direct XTCH render (%lu bytes)",
+                static_cast<unsigned long>(planeSize));
         return (this->*renderNoCoverSleepScreen)();
       }
       uint8_t* plane2 = static_cast<uint8_t*>(malloc(planeSize));
       if (!plane2) {
-        LOG_ERR("SLP", "Failed to alloc plane2 for direct XTCH render (%lu bytes)", static_cast<unsigned long>(planeSize));
+        LOG_ERR("SLP", "Failed to alloc plane2 for direct XTCH render (%lu bytes)",
+                static_cast<unsigned long>(planeSize));
         free(plane1);
         return (this->*renderNoCoverSleepScreen)();
       }
@@ -446,7 +449,8 @@ void SleepActivity::renderCoverSleepScreen() const {
       const size_t bufferSize = (static_cast<size_t>(lastXtc.getPageWidth() + 7) / 8) * lastXtc.getPageHeight();
       uint8_t* pageBuffer = static_cast<uint8_t*>(malloc(bufferSize));
       if (!pageBuffer) {
-        LOG_ERR("SLP", "Failed to alloc page buffer for direct XTC render (%lu bytes)", static_cast<unsigned long>(bufferSize));
+        LOG_ERR("SLP", "Failed to alloc page buffer for direct XTC render (%lu bytes)",
+                static_cast<unsigned long>(bufferSize));
         return (this->*renderNoCoverSleepScreen)();
       }
       if (lastXtc.loadPage(0, pageBuffer, bufferSize) == 0) {
