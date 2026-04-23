@@ -207,10 +207,6 @@ void EpubReaderActivity::loop() {
     }
   }
 
-  if (maybePromptToMarkCompleted()) {
-    return;
-  }
-
   // Enter reader menu activity.
   if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
     int currentPage = 0;
@@ -609,38 +605,6 @@ void EpubReaderActivity::setBookCompleted(bool isCompleted) {
 
   stats.save(epub->getCachePath());
   globalStats.save();
-}
-
-bool EpubReaderActivity::maybePromptToMarkCompleted() {
-  {
-    // Serialize EPUB metadata/file access with the render task.
-    RenderLock lock(*this);
-    if (completionPromptShown || stats.isCompleted || !section || section->pageCount <= 0 || !epub) {
-      return false;
-    }
-
-    if (currentSpineIndex < 0 || currentSpineIndex >= epub->getSpineItemsCount()) {
-      return false;
-    }
-
-    const float chapterProgress = static_cast<float>(section->currentPage + 1) / static_cast<float>(section->pageCount);
-    const float bookProgress = epub->calculateProgress(currentSpineIndex, chapterProgress) * 100.0f;
-    if (bookProgress < 99.0f) {
-      return false;
-    }
-  }
-
-  completionPromptShown = true;
-  startActivityForResult(
-      std::make_unique<ConfirmationActivity>(renderer, mappedInput, tr(STR_MARK_FINISHED_PROMPT_TITLE),
-                                             tr(STR_MARK_FINISHED_PROMPT_BODY)),
-      [this](const ActivityResult& result) {
-        if (!result.isCancelled) {
-          setBookCompleted(true);
-        }
-        requestUpdate();
-      });
-  return true;
 }
 
 void EpubReaderActivity::applyOrientation(const uint8_t orientation) {
