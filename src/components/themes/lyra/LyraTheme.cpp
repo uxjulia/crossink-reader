@@ -6,6 +6,7 @@
 #include <HalStorage.h>
 #include <I18n.h>
 
+#include <algorithm>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -37,7 +38,6 @@ constexpr int cornerRadius = 6;
 constexpr int topHintButtonY = 345;
 constexpr int popupMarginX = 16;
 constexpr int popupMarginY = 12;
-constexpr int maxSubtitleWidth = 100;
 constexpr int maxListValueWidth = 200;
 constexpr int mainMenuIconSize = 32;
 constexpr int listIconSize = 24;
@@ -154,8 +154,27 @@ void LyraTheme::drawHeader(const GfxRenderer& renderer, Rect rect, const char* t
                    Rect{batteryX, rect.y + 5, LyraMetrics::values.batteryWidth, LyraMetrics::values.batteryHeight},
                    showBatteryPercentage);
 
-  int maxTitleWidth =
-      rect.width - LyraMetrics::values.contentSidePadding * 2 - (subtitle != nullptr ? maxSubtitleWidth : 0);
+  int maxTitleWidth = title != nullptr ? renderer.getTextWidth(UI_12_FONT_ID, title, EpdFontFamily::BOLD) : 0;
+  int maxSubtitleWidth =
+      subtitle != nullptr ? renderer.getTextWidth(SMALL_FONT_ID, subtitle, EpdFontFamily::REGULAR) : 0;
+
+  // Available space is the distance between the side paddings, and a with side padding between title and subtitle.
+  const int availableSpace = rect.width - LyraMetrics::values.contentSidePadding * 3;
+
+  if (maxTitleWidth + maxSubtitleWidth > availableSpace) {
+    if ((maxTitleWidth > availableSpace / 2) && (maxSubtitleWidth > availableSpace / 2)) {
+      // Both are wider then half the space, truncate both.
+      maxTitleWidth = availableSpace / 2;
+      maxSubtitleWidth = availableSpace / 2;
+    } else {
+      // Truncate the the longest one
+      if (maxTitleWidth > maxSubtitleWidth) {
+        maxTitleWidth = availableSpace - maxSubtitleWidth;
+      } else {
+        maxSubtitleWidth = availableSpace - maxTitleWidth;
+      }
+    }
+  }
 
   if (title) {
     auto truncatedTitle = renderer.truncatedText(UI_12_FONT_ID, title, maxTitleWidth, EpdFontFamily::BOLD);
@@ -409,7 +428,7 @@ void LyraTheme::drawSideButtonHints(const GfxRenderer& renderer, const char* top
 void LyraTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std::vector<RecentBook>& recentBooks,
                                     const int selectorIndex, bool& coverRendered, bool& coverBufferStored,
                                     bool& bufferRestored, std::function<bool()> storeCoverBuffer,
-                                    const BookReadingStats* stats) const {
+                                    const BookReadingStats* stats, float progressPercent) const {
   const int tileWidth = rect.width - 2 * LyraMetrics::values.contentSidePadding;
   const int tileHeight = rect.height;
   const int tileY = rect.y;
@@ -486,11 +505,14 @@ void LyraTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std:
     auto author = renderer.truncatedText(UI_10_FONT_ID, book.author.c_str(), textWidth);
     const int titleLineHeight = renderer.getLineHeight(UI_12_FONT_ID);
     const int statsLineHeight = renderer.getLineHeight(SMALL_FONT_ID);
+    const int progressLineHeight = renderer.getLineHeight(UI_10_FONT_ID);
     const int titleBlockHeight = titleLineHeight * static_cast<int>(titleLines.size());
     const int authorHeight = book.author.empty() ? 0 : (renderer.getLineHeight(UI_10_FONT_ID) * 3 / 2);
     const bool hasStats = (stats != nullptr && stats->sessionCount > 0);
+    const bool hasProgress = progressPercent >= 0.0f;
     const int statsBlockHeight = hasStats ? (statsLineHeight * 2 + 6) : 0;
-    const int totalBlockHeight = titleBlockHeight + authorHeight + statsBlockHeight;
+    const int progressBlockHeight = hasProgress ? (progressLineHeight + 12) : 0;
+    const int totalBlockHeight = titleBlockHeight + authorHeight + statsBlockHeight + progressBlockHeight;
     int titleY = tileY + tileHeight / 2 - totalBlockHeight / 2;
     const int textX = tileX + hPaddingInSelection + coverWidth + LyraMetrics::values.verticalSpacing;
     for (const auto& line : titleLines) {
@@ -513,6 +535,23 @@ void LyraTheme::drawRecentBookCover(GfxRenderer& renderer, Rect rect, const std:
       BookReadingStats::formatDuration(stats->totalReadingSeconds / stats->sessionCount, buf, sizeof(buf));
       snprintf(statLine, sizeof(statLine), "%s%s", tr(STR_STATS_AVG_SESSION), buf);
       renderer.drawText(SMALL_FONT_ID, textX, titleY, statLine, true);
+      titleY += statsLineHeight;
+    }
+    if (hasProgress) {
+      titleY += 8;
+      constexpr int progressBarHeight = 4;
+      const int progressBarWidth = textWidth;
+      const int progressBarY = titleY + progressLineHeight + 2;
+      const int filledWidth =
+          std::clamp(static_cast<int>((progressPercent / 100.0f) * progressBarWidth), 0, progressBarWidth);
+      char progressLabel[16];
+      snprintf(progressLabel, sizeof(progressLabel), "%.0f%%", progressPercent);
+      renderer.drawText(UI_10_FONT_ID, textX, titleY, progressLabel, true, EpdFontFamily::BOLD);
+      renderer.drawRect(textX, progressBarY, progressBarWidth, progressBarHeight, true);
+      if (filledWidth > 0) {
+        renderer.fillRect(textX + 1, progressBarY + 1, std::max(0, filledWidth - 2),
+                          std::max(0, progressBarHeight - 2));
+      }
     }
   } else {
     drawEmptyRecents(renderer, rect);
