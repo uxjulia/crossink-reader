@@ -404,7 +404,6 @@ void SleepActivity::renderCoverSleepScreen() const {
       return (this->*renderNoCoverSleepScreen)();
     }
 
-<<<<<<< HEAD
     if (lastXtc.getBitDepth() == 2) {
       const size_t planeSize = (static_cast<size_t>(lastXtc.getPageWidth()) * lastXtc.getPageHeight() + 7) / 8;
       uint8_t* plane1 = static_cast<uint8_t*>(malloc(planeSize));
@@ -464,7 +463,6 @@ void SleepActivity::renderCoverSleepScreen() const {
       renderer.displayXtcBwPage(pageBuffer, lastXtc.getPageWidth(), lastXtc.getPageHeight());
       free(pageBuffer);
       return;
-    }
     }
 
     if (!lastXtc.generateCoverBmp()) {
