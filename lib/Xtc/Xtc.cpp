@@ -739,6 +739,21 @@ bool Xtc::generateThumbBmp(int height) const {
     return false;
   }
 
+  int16_t* errRow0 = static_cast<int16_t*>(malloc((thumbWidth + 4) * sizeof(int16_t)));
+  int16_t* errRow1 = static_cast<int16_t*>(malloc((thumbWidth + 4) * sizeof(int16_t)));
+  int16_t* errRow2 = static_cast<int16_t*>(malloc((thumbWidth + 4) * sizeof(int16_t)));
+  if (!errRow0 || !errRow1 || !errRow2) {
+    free(pageBuffer);
+    free(rowBuffer);
+    free(errRow0);
+    free(errRow1);
+    free(errRow2);
+    return false;
+  }
+  memset(errRow0, 0, (thumbWidth + 4) * sizeof(int16_t));
+  memset(errRow1, 0, (thumbWidth + 4) * sizeof(int16_t));
+  memset(errRow2, 0, (thumbWidth + 4) * sizeof(int16_t));
+
   const uint32_t scaleInv_fp = static_cast<uint32_t>(65536.0f / scale);
   const size_t srcRowBytes = (pageInfo.width + 7) / 8;
 
@@ -770,27 +785,42 @@ bool Xtc::generateThumbBmp(int height) const {
         }
       }
 
-      uint8_t avgGray = (totalCount > 0) ? static_cast<uint8_t>(graySum / totalCount) : 255;
-      uint32_t hash = static_cast<uint32_t>(dstX) * 374761393u + static_cast<uint32_t>(dstY) * 668265263u;
-      hash = (hash ^ (hash >> 13)) * 1274126177u;
-      const int threshold = static_cast<int>(hash >> 24);
-      const int adjustedThreshold = 128 + ((threshold - 128) / 2);
-      const uint8_t oneBit = (avgGray >= adjustedThreshold) ? 1 : 0;
-      const size_t byteIndex = dstX / 8;
-      const size_t bitOffset = 7 - (dstX % 8);
-      if (byteIndex < rowSize) {
-        if (oneBit)
-          rowBuffer[byteIndex] |= (1 << bitOffset);
-        else
-          rowBuffer[byteIndex] &= ~(1 << bitOffset);
+      int adjusted = (totalCount > 0) ? static_cast<int>(graySum * 255 / totalCount) / 255 : 255;
+      adjusted = ((adjusted - 128) * 120) / 100 + 128;
+      if (adjusted < 0) adjusted = 0;
+      if (adjusted > 255) adjusted = 255;
+      adjusted += errRow0[dstX + 2];
+      if (adjusted < 0) adjusted = 0;
+      if (adjusted > 255) adjusted = 255;
+      const bool dark = adjusted < 128;
+      const int quantizedValue = dark ? 0 : 255;
+      const int error = (adjusted - quantizedValue) >> 3;
+      errRow0[dstX + 3] += error;
+      errRow0[dstX + 4] += error;
+      errRow1[dstX + 1] += error;
+      errRow1[dstX + 2] += error;
+      errRow1[dstX + 3] += error;
+      errRow2[dstX + 2] += error;
+      if (dark) {
+        const size_t bi = dstX / 8;
+        if (bi < rowSize) rowBuffer[bi] &= ~(1 << (7 - (dstX % 8)));
       }
     }
     thumbBmp.write(rowBuffer, rowSize);
+    int16_t* tmp = errRow0;
+    errRow0 = errRow1;
+    errRow1 = errRow2;
+    errRow2 = tmp;
+    memset(errRow2, 0, (thumbWidth + 4) * sizeof(int16_t));
   }
 
   free(rowBuffer);
   free(pageBuffer);
-  LOG_DBG("XTC", "Generated 1-bit thumb BMP (%dx%d): %s", thumbWidth, thumbHeight, getThumbBmpPath(height).c_str());
+  free(errRow0);
+  free(errRow1);
+  free(errRow2);
+  LOG_DBG("XTC", "Generated 1-bit thumb BMP with Atkinson dithering (%dx%d): %s", thumbWidth, thumbHeight,
+          getThumbBmpPath(height).c_str());
   return true;
 }
 
