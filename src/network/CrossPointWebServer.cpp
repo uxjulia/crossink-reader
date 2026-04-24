@@ -13,6 +13,7 @@
 
 #include <algorithm>
 
+#include "AppVersion.h"
 #include "CrossPointSettings.h"
 #include "OpdsServerStore.h"
 #include "SettingsList.h"

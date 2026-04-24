@@ -3,6 +3,7 @@
 #include <GfxRenderer.h>
 #include <I18n.h>
 
+#include "AppVersion.h"
 #include "fontIds.h"
 #include "images/Logo120.h"
 

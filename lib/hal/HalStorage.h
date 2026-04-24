@@ -85,6 +85,7 @@ class HalFile : public Print {
   int read();  // read a single byte
   size_t write(const void* buf, size_t count);
   size_t write(uint8_t b) override;
+  bool sync();
   bool rename(const char* newPath);
   bool isDirectory() const;
   void rewindDirectory();

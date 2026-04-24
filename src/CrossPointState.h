@@ -1,4 +1,5 @@
 #pragma once
+#include <atomic>
 #include <cstdint>
 #include <string>
 
@@ -31,6 +32,12 @@ class CrossPointState {
   bool loadFromFile();
   uint16_t pendingBookmarkSpine = UINT16_MAX;
   float pendingBookmarkProgress = -1.0f;
+
+  // Set by background move task on failure; read and cleared by ActivityManager to show AlertActivity.
+  // Title/body are written before the flag is set to ensure they are visible when flag is read.
+  std::atomic<bool> hasPendingAlert{false};
+  char pendingAlertTitle[64] = {};
+  char pendingAlertBody[256] = {};
 
  private:
   bool loadFromBinaryFile();

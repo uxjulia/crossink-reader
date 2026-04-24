@@ -2,6 +2,7 @@
 
 #include <string>
 
+#include "AppVersion.h"
 #include "Arduino.h"
 #include "HalStorage.h"
 #include "Logging.h"

@@ -15,6 +15,7 @@
 
 #include <cstring>
 
+#include "AppVersion.h"
 #include "CrossPointSettings.h"
 #include "CrossPointState.h"
 #include "KOReaderCredentialStore.h"

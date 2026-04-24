@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <functional>
 #include <string>
 
@@ -21,6 +22,7 @@ class OtaUpdater {
     UPDATE_OLDER_ERROR,
     INTERNAL_UPDATE_ERROR,
     OOM_ERROR,
+    CANCELLED_ERROR,
   };
 
   size_t getOtaSize() const { return otaSize; }
@@ -35,5 +37,5 @@ class OtaUpdater {
   bool isUpdateNewer() const;
   const std::string& getLatestVersion() const;
   OtaUpdaterError checkForUpdate();
-  OtaUpdaterError installUpdate();
+  OtaUpdaterError installUpdate(std::atomic<bool>* cancelRequested = nullptr);
 };
