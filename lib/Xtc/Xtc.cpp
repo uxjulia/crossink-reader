@@ -430,79 +430,35 @@ bool Xtc::generateThumbBmp(int height) const {
   LOG_DBG("XTC", "Generating thumb BMP: %dx%d -> %dx%d (scale: %.3f)", pageInfo.width, pageInfo.height, thumbWidth,
           thumbHeight, scale);
 
-  // For 2-bit (XTCH): sequential plane loading → Atkinson dithered 1-bit BMP.
-  // Loads each plane separately (~48KB) to stay within memory constraints after reader sessions.
+  // For 2-bit (XTCH): strip-based sequential plane loading → area-averaged Atkinson dithered 1-bit BMP.
+  // Loads each plane separately (~48KB) in strips to stay within memory constraints after reader sessions.
+  // Uses area-averaging (same formula as the 1-bit path) for accurate luminance computation.
   if (bitDepth == 2) {
     const size_t planeSize = (static_cast<size_t>(pageInfo.width) * pageInfo.height + 7) / 8;
     const size_t colBytes = (pageInfo.height + 7) / 8;
     const uint32_t scaleInv_fp2 = static_cast<uint32_t>(65536.0f / scale);
 
-    const size_t plane1BitsSize = (static_cast<size_t>(thumbWidth) * thumbHeight + 7) / 8;
-    uint8_t* plane1Bits = static_cast<uint8_t*>(malloc(plane1BitsSize));
-    if (!plane1Bits) {
-      LOG_ERR("XTC", "Failed to alloc plane1bits (%lu bytes)", static_cast<unsigned long>(plane1BitsSize));
-      return false;
-    }
-    memset(plane1Bits, 0, plane1BitsSize);
-
     uint8_t* planeBuffer = static_cast<uint8_t*>(malloc(planeSize));
     if (!planeBuffer) {
       LOG_ERR("XTC", "Failed to alloc plane buffer (%lu bytes)", static_cast<unsigned long>(planeSize));
-      free(plane1Bits);
       return false;
     }
 
-    // Pass 1: plane1 (bit1/MSB) majority vote per output pixel
-    if (const_cast<xtc::XtcParser*>(parser.get())->loadPageMsb(0, planeBuffer, planeSize) == 0) {
-      LOG_ERR("XTC", "Failed to load plane1 for thumb");
+    const size_t stripBudget = (static_cast<size_t>(thumbWidth) * thumbHeight + 7) / 8;
+    const int stripRows = std::min(static_cast<int>(thumbHeight), static_cast<int>(stripBudget / thumbWidth));
+
+    uint8_t* darkCount1Buf = static_cast<uint8_t*>(malloc(static_cast<size_t>(stripRows) * thumbWidth));
+    if (!darkCount1Buf) {
+      LOG_ERR("XTC", "Failed to alloc darkCount1 buffer (%lu bytes)",
+              static_cast<unsigned long>(static_cast<size_t>(stripRows) * thumbWidth));
       free(planeBuffer);
-      free(plane1Bits);
       return false;
     }
-    for (uint16_t dstY = 0; dstY < thumbHeight; dstY++) {
-      uint32_t srcYS = (static_cast<uint32_t>(dstY) * scaleInv_fp2) >> 16;
-      uint32_t srcYE = (static_cast<uint32_t>(dstY + 1) * scaleInv_fp2) >> 16;
-      if (srcYS >= pageInfo.height) srcYS = pageInfo.height - 1;
-      if (srcYE > pageInfo.height) srcYE = pageInfo.height;
-      if (srcYE <= srcYS) srcYE = srcYS + 1;
-      if (srcYE > pageInfo.height) srcYE = pageInfo.height;
-      for (uint16_t dstX = 0; dstX < thumbWidth; dstX++) {
-        uint32_t srcXS = (static_cast<uint32_t>(dstX) * scaleInv_fp2) >> 16;
-        uint32_t srcXE = (static_cast<uint32_t>(dstX + 1) * scaleInv_fp2) >> 16;
-        if (srcXS >= pageInfo.width) srcXS = pageInfo.width - 1;
-        if (srcXE > pageInfo.width) srcXE = pageInfo.width;
-        if (srcXE <= srcXS) srcXE = srcXS + 1;
-        if (srcXE > pageInfo.width) srcXE = pageInfo.width;
-        uint32_t darkCount = 0, total = 0;
-        for (uint32_t sy = srcYS; sy < srcYE; sy++)
-          for (uint32_t sx = srcXS; sx < srcXE; sx++) {
-            const size_t bo = (pageInfo.width - 1 - sx) * colBytes + sy / 8;
-            if (bo < planeSize) {
-              if ((planeBuffer[bo] >> (7 - (sy % 8))) & 1) darkCount++;
-              total++;
-            }
-          }
-        if (total > 0 && darkCount * 2 >= total) {
-          const size_t pi = static_cast<size_t>(dstY) * thumbWidth + dstX;
-          plane1Bits[pi / 8] |= static_cast<uint8_t>(1u << (7 - (pi % 8)));
-        }
-      }
-    }
-
-    // Pass 2: plane2 (bit2/LSB) + combine → Atkinson dithering → 1-bit BMP
-    if (const_cast<xtc::XtcParser*>(parser.get())->loadPageLsb(0, planeBuffer, planeSize) == 0) {
-      LOG_ERR("XTC", "Failed to load plane2 for thumb");
-      free(planeBuffer);
-      free(plane1Bits);
-      return false;
-    }
-
-    Atkinson1BitDitherer ditherer(thumbWidth);
 
     FsFile thumbBmp;
     if (!Storage.openFileForWrite("XTC", getThumbBmpPath(height), thumbBmp)) {
+      free(darkCount1Buf);
       free(planeBuffer);
-      free(plane1Bits);
       return false;
     }
 
@@ -513,53 +469,104 @@ bool Xtc::generateThumbBmp(int height) const {
     const uint32_t rowSize = (thumbWidth + 31) / 32 * 4;
     uint8_t* rowBuf = static_cast<uint8_t*>(malloc(rowSize));
     if (!rowBuf) {
+      free(darkCount1Buf);
       free(planeBuffer);
-      free(plane1Bits);
       thumbBmp.close();
       return false;
     }
 
-    for (uint16_t dstY = 0; dstY < thumbHeight; dstY++) {
-      memset(rowBuf, 0xFF, rowSize);
-      uint32_t srcYS = (static_cast<uint32_t>(dstY) * scaleInv_fp2) >> 16;
-      uint32_t srcYE = (static_cast<uint32_t>(dstY + 1) * scaleInv_fp2) >> 16;
-      if (srcYS >= pageInfo.height) srcYS = pageInfo.height - 1;
-      if (srcYE > pageInfo.height) srcYE = pageInfo.height;
-      if (srcYE <= srcYS) srcYE = srcYS + 1;
-      if (srcYE > pageInfo.height) srcYE = pageInfo.height;
-      for (uint16_t dstX = 0; dstX < thumbWidth; dstX++) {
-        uint32_t srcXS = (static_cast<uint32_t>(dstX) * scaleInv_fp2) >> 16;
-        uint32_t srcXE = (static_cast<uint32_t>(dstX + 1) * scaleInv_fp2) >> 16;
-        if (srcXS >= pageInfo.width) srcXS = pageInfo.width - 1;
-        if (srcXE > pageInfo.width) srcXE = pageInfo.width;
-        if (srcXE <= srcXS) srcXE = srcXS + 1;
-        if (srcXE > pageInfo.width) srcXE = pageInfo.width;
-        uint32_t darkCount = 0, total = 0;
-        for (uint32_t sy = srcYS; sy < srcYE; sy++)
-          for (uint32_t sx = srcXS; sx < srcXE; sx++) {
-            const size_t bo = (pageInfo.width - 1 - sx) * colBytes + sy / 8;
-            if (bo < planeSize) {
-              if ((planeBuffer[bo] >> (7 - (sy % 8))) & 1) darkCount++;
-              total++;
+    Atkinson1BitDitherer ditherer(thumbWidth);
+
+    for (int stripStart = 0; stripStart < static_cast<int>(thumbHeight); stripStart += stripRows) {
+      const int curRows = std::min(stripRows, static_cast<int>(thumbHeight) - stripStart);
+
+      // Pass 1: plane1 (bit1/MSB) — count dark pixels per output pixel
+      if (const_cast<xtc::XtcParser*>(parser.get())->loadPageMsb(0, planeBuffer, planeSize) == 0) {
+        LOG_ERR("XTC", "Failed to load plane1 for thumb");
+        free(rowBuf);
+        free(darkCount1Buf);
+        free(planeBuffer);
+        thumbBmp.close();
+        return false;
+      }
+      for (int dy = 0; dy < curRows; dy++) {
+        const uint16_t dstY = static_cast<uint16_t>(stripStart + dy);
+        for (uint16_t dstX = 0; dstX < thumbWidth; dstX++) {
+          uint32_t srcYS = (static_cast<uint32_t>(dstY) * scaleInv_fp2) >> 16;
+          uint32_t srcYE = (static_cast<uint32_t>(dstY + 1) * scaleInv_fp2) >> 16;
+          if (srcYS >= pageInfo.height) srcYS = pageInfo.height - 1;
+          if (srcYE > pageInfo.height) srcYE = pageInfo.height;
+          if (srcYE <= srcYS) srcYE = srcYS + 1;
+          if (srcYE > pageInfo.height) srcYE = pageInfo.height;
+          uint32_t srcXS = (static_cast<uint32_t>(dstX) * scaleInv_fp2) >> 16;
+          uint32_t srcXE = (static_cast<uint32_t>(dstX + 1) * scaleInv_fp2) >> 16;
+          if (srcXS >= pageInfo.width) srcXS = pageInfo.width - 1;
+          if (srcXE > pageInfo.width) srcXE = pageInfo.width;
+          if (srcXE <= srcXS) srcXE = srcXS + 1;
+          if (srcXE > pageInfo.width) srcXE = pageInfo.width;
+          uint32_t darkCount = 0;
+          for (uint32_t sy = srcYS; sy < srcYE; sy++)
+            for (uint32_t sx = srcXS; sx < srcXE; sx++) {
+              const size_t bo = (pageInfo.width - 1 - sx) * colBytes + sy / 8;
+              if (bo < planeSize) {
+                if ((planeBuffer[bo] >> (7 - (sy % 8))) & 1) darkCount++;
+              }
             }
-          }
-        const size_t pi = static_cast<size_t>(dstY) * thumbWidth + dstX;
-        const uint8_t bit1 = (plane1Bits[pi / 8] >> (7 - (pi % 8))) & 1;
-        const uint8_t bit2 = (total > 0 && darkCount * 2 >= total) ? 1 : 0;
-        const uint8_t lum = (1 - bit1) * 85 + (1 - bit2) * 170;
-        const uint8_t bit = ditherer.processPixel(lum, dstX);
-        if (!bit) {
-          const size_t bi = dstX / 8;
-          if (bi < rowSize) rowBuf[bi] &= ~(1 << (7 - (dstX % 8)));
+          darkCount1Buf[static_cast<size_t>(dy) * thumbWidth + dstX] = static_cast<uint8_t>(darkCount);
         }
       }
-      thumbBmp.write(rowBuf, rowSize);
-      ditherer.nextRow();
+
+      // Pass 2: plane2 (bit2/LSB) — combine with darkCount1 → area-average → dither → write BMP rows
+      if (const_cast<xtc::XtcParser*>(parser.get())->loadPageLsb(0, planeBuffer, planeSize) == 0) {
+        LOG_ERR("XTC", "Failed to load plane2 for thumb");
+        free(rowBuf);
+        free(darkCount1Buf);
+        free(planeBuffer);
+        thumbBmp.close();
+        return false;
+      }
+      for (int dy = 0; dy < curRows; dy++) {
+        memset(rowBuf, 0xFF, rowSize);
+        const uint16_t dstY = static_cast<uint16_t>(stripStart + dy);
+        for (uint16_t dstX = 0; dstX < thumbWidth; dstX++) {
+          uint32_t srcYS = (static_cast<uint32_t>(dstY) * scaleInv_fp2) >> 16;
+          uint32_t srcYE = (static_cast<uint32_t>(dstY + 1) * scaleInv_fp2) >> 16;
+          if (srcYS >= pageInfo.height) srcYS = pageInfo.height - 1;
+          if (srcYE > pageInfo.height) srcYE = pageInfo.height;
+          if (srcYE <= srcYS) srcYE = srcYS + 1;
+          if (srcYE > pageInfo.height) srcYE = pageInfo.height;
+          uint32_t srcXS = (static_cast<uint32_t>(dstX) * scaleInv_fp2) >> 16;
+          uint32_t srcXE = (static_cast<uint32_t>(dstX + 1) * scaleInv_fp2) >> 16;
+          if (srcXS >= pageInfo.width) srcXS = pageInfo.width - 1;
+          if (srcXE > pageInfo.width) srcXE = pageInfo.width;
+          if (srcXE <= srcXS) srcXE = srcXS + 1;
+          if (srcXE > pageInfo.width) srcXE = pageInfo.width;
+          uint32_t darkCount = 0, totalCount = 0;
+          for (uint32_t sy = srcYS; sy < srcYE; sy++)
+            for (uint32_t sx = srcXS; sx < srcXE; sx++) {
+              const size_t bo = (pageInfo.width - 1 - sx) * colBytes + sy / 8;
+              if (bo < planeSize) {
+                if ((planeBuffer[bo] >> (7 - (sy % 8))) & 1) darkCount++;
+                totalCount++;
+              }
+            }
+          const uint32_t dark1 = darkCount1Buf[static_cast<size_t>(dy) * thumbWidth + dstX];
+          const int lumSum = static_cast<int>((totalCount - dark1) * 85 + (totalCount - darkCount) * 170);
+          const int avgLum = (totalCount > 0) ? (lumSum * 255 / totalCount) / 255 : 255;
+          const uint8_t bit = ditherer.processPixel(avgLum, dstX);
+          if (!bit) {
+            const size_t bi = dstX / 8;
+            if (bi < rowSize) rowBuf[bi] &= ~(1 << (7 - (dstX % 8)));
+          }
+        }
+        thumbBmp.write(rowBuf, rowSize);
+        ditherer.nextRow();
+      }
     }
 
     free(rowBuf);
+    free(darkCount1Buf);
     free(planeBuffer);
-    free(plane1Bits);
     thumbBmp.close();
     LOG_DBG("XTC", "Generated 1-bit thumb BMP with dithering (%dx%d): %s", thumbWidth, thumbHeight,
             getThumbBmpPath(height).c_str());
