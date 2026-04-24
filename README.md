@@ -169,7 +169,7 @@ pio run -e simulator
 2. Connect your Xteink X4 to your computer via USB-C and wake/unlock the device
 3. Go to https://crosspointreader.com/#flash-tools and choose your device
 4. Select "Custom .bin" from the options
-5. Choose the `firmware-*.bin` file you uploaded and click "Flash"
+5. Choose the `firmware-*.bin` file you downloaded and click "Flash"
 
 To revert back to the official firmware, you can flash the latest official firmware from https://crosspointreader.com/#flash-tools
 

@@ -51,6 +51,7 @@ class EpubReaderActivity final : public Activity {
 
   struct ReadFolderMoveParams {
     std::string epubPath;
+    std::string dstEpubPath;
     std::string cachePath;
     std::string title;
   };

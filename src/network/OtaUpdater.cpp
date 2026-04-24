@@ -3,7 +3,7 @@
 bool OtaUpdater::isUpdateNewer() const { return false; }
 const std::string& OtaUpdater::getLatestVersion() const { return latestVersion; }
 OtaUpdater::OtaUpdaterError OtaUpdater::checkForUpdate() { return NO_UPDATE; }
-OtaUpdater::OtaUpdaterError OtaUpdater::installUpdate(volatile bool*) { return NO_UPDATE; }
+OtaUpdater::OtaUpdaterError OtaUpdater::installUpdate(std::atomic<bool>*) { return NO_UPDATE; }
 #else
 #include <ArduinoJson.h>
 #include <Logging.h>
@@ -214,13 +214,17 @@ bool OtaUpdater::isUpdateNewer() const {
 
 const std::string& OtaUpdater::getLatestVersion() const { return latestVersion; }
 
-OtaUpdater::OtaUpdaterError OtaUpdater::installUpdate(volatile bool* cancelRequested) {
+OtaUpdater::OtaUpdaterError OtaUpdater::installUpdate(std::atomic<bool>* cancelRequested) {
   const auto isCancellationRequested = [cancelRequested]() -> bool {
-    return cancelRequested != nullptr && *cancelRequested;
+    return cancelRequested != nullptr && cancelRequested->load(std::memory_order_relaxed);
   };
 
   if (!isUpdateNewer()) {
     return UPDATE_OLDER_ERROR;
+  }
+
+  if (isCancellationRequested()) {
+    return CANCELLED_ERROR;
   }
 
   esp_https_ota_handle_t ota_handle = NULL;
@@ -257,12 +261,26 @@ OtaUpdater::OtaUpdaterError OtaUpdater::installUpdate(volatile bool* cancelReque
   }
 
   do {
+    if (isCancellationRequested()) {
+      LOG_INF("OTA", "Update cancelled");
+      esp_wifi_set_ps(WIFI_PS_MIN_MODEM);
+      esp_https_ota_abort(ota_handle);
+      return CANCELLED_ERROR;
+    }
+
     esp_err = esp_https_ota_perform(ota_handle);
     processedSize = esp_https_ota_get_image_len_read(ota_handle);
     /* Sent signal to  OtaUpdateActivity */
     render = true;
     delay(100);  // TODO: should we replace this with something better?
   } while (esp_err == ESP_ERR_HTTPS_OTA_IN_PROGRESS);
+
+  if (isCancellationRequested()) {
+    LOG_INF("OTA", "Update cancelled");
+    esp_wifi_set_ps(WIFI_PS_MIN_MODEM);
+    esp_https_ota_abort(ota_handle);
+    return CANCELLED_ERROR;
+  }
 
   /* Return back to default power saving for WiFi in case of failing */
   esp_wifi_set_ps(WIFI_PS_MIN_MODEM);

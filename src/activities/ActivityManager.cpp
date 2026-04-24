@@ -137,8 +137,8 @@ void ActivityManager::loop() {
     }
   }
 
-  if (APP_STATE.hasPendingAlert && pendingAction == PendingAction::None) {
-    APP_STATE.hasPendingAlert = false;
+  if (APP_STATE.hasPendingAlert.load(std::memory_order_acquire) && pendingAction == PendingAction::None) {
+    APP_STATE.hasPendingAlert.store(false, std::memory_order_relaxed);
     pushActivity(std::make_unique<AlertActivity>(renderer, mappedInput));
   }
 

@@ -97,6 +97,25 @@ void GlobalReadingStats::save() const {
   data[14] = (completedBooks >> 8) & 0xFF;
   data[15] = (completedBooks >> 16) & 0xFF;
   data[16] = (completedBooks >> 24) & 0xFF;
-  f.write(data, GLOBAL_STATS_FILE_SIZE);
-  f.close();
+  const size_t bytesWritten = f.write(data, GLOBAL_STATS_FILE_SIZE);
+  if (bytesWritten != GLOBAL_STATS_FILE_SIZE) {
+    LOG_ERR("GSTATS", "Short write for global stats: %u/%u bytes", static_cast<unsigned>(bytesWritten),
+            static_cast<unsigned>(GLOBAL_STATS_FILE_SIZE));
+    f.close();
+    Storage.remove(GLOBAL_STATS_PATH);
+    return;
+  }
+
+  f.flush();
+  if (!f.sync()) {
+    LOG_ERR("GSTATS", "Failed to sync global_stats.bin");
+    f.close();
+    Storage.remove(GLOBAL_STATS_PATH);
+    return;
+  }
+
+  if (!f.close()) {
+    LOG_ERR("GSTATS", "Failed to close global_stats.bin after save");
+    Storage.remove(GLOBAL_STATS_PATH);
+  }
 }

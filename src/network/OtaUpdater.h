@@ -37,5 +37,5 @@ class OtaUpdater {
   bool isUpdateNewer() const;
   const std::string& getLatestVersion() const;
   OtaUpdaterError checkForUpdate();
-  OtaUpdaterError installUpdate(volatile bool* cancelRequested = nullptr);
+  OtaUpdaterError installUpdate(std::atomic<bool>* cancelRequested = nullptr);
 };

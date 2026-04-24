@@ -13,7 +13,7 @@ SYMBOLS2_FONT="../builtinFonts/source/NotoSymbols2/NotoSansSymbols2-Regular.ttf"
 # 0x1F600-0x1F64F: Emoticons (😀😂🙂 etc.)
 # 0x1F44B-0x1F44F: Hand gesture emojis (👋👌👍👎👏)
 # 0x2764: Heart symbol (❤️)
-# 0x0370-0x03FF: Greek and Coptic (for math symbols like π, Σ, etc.)
+# 0x0370-0x03FF: Greek and Coptic (for math symbols like Γ,Δ,Π,Ω,µ,π)
 EMOJI_INTERVALS=(
   --additional-intervals 0x2669,0x266F
   --additional-intervals 0x1F600,0x1F64F
