@@ -59,6 +59,79 @@ float EpubReaderActivity::getCurrentBookProgressPercent() const {
   return epub->calculateProgress(currentSpineIndex, chapterProgress) * 100.0f;
 }
 
+void EpubReaderActivity::initializeCompletionPromptTrigger() {
+  completionTriggerSpineIndex = -1;
+  completionTriggerSpineProgress = 1.0f;
+  completionPromptQueued = false;
+  completionPromptShown = stats.isCompleted;
+
+  if (!epub) {
+    return;
+  }
+
+  const size_t bookSize = epub->getBookSize();
+  const int spineCount = epub->getSpineItemsCount();
+  if (bookSize == 0 || spineCount <= 0) {
+    return;
+  }
+
+  size_t targetSize = (bookSize / 100) * 99 + (bookSize % 100) * 99 / 100;
+  if (targetSize >= bookSize) {
+    targetSize = bookSize - 1;
+  }
+
+  int targetSpineIndex = spineCount - 1;
+  size_t prevCumulative = 0;
+
+  for (int i = 0; i < spineCount; i++) {
+    const size_t cumulative = epub->getCumulativeSpineItemSize(i);
+    if (targetSize <= cumulative) {
+      targetSpineIndex = i;
+      prevCumulative = (i > 0) ? epub->getCumulativeSpineItemSize(i - 1) : 0;
+      break;
+    }
+  }
+
+  const size_t cumulative = epub->getCumulativeSpineItemSize(targetSpineIndex);
+  const size_t spineSize = (cumulative > prevCumulative) ? (cumulative - prevCumulative) : 0;
+
+  completionTriggerSpineIndex = targetSpineIndex;
+  completionTriggerSpineProgress =
+      (spineSize == 0) ? 0.0f : static_cast<float>(targetSize - prevCumulative) / static_cast<float>(spineSize);
+
+  if (completionTriggerSpineProgress < 0.0f) {
+    completionTriggerSpineProgress = 0.0f;
+  } else if (completionTriggerSpineProgress > 1.0f) {
+    completionTriggerSpineProgress = 1.0f;
+  }
+}
+
+bool EpubReaderActivity::isAtOrPastCompletionTrigger() const {
+  if (!epub || !section || section->pageCount <= 0 || completionTriggerSpineIndex < 0) {
+    return false;
+  }
+
+  if (currentSpineIndex > completionTriggerSpineIndex) {
+    return true;
+  }
+  if (currentSpineIndex < completionTriggerSpineIndex) {
+    return false;
+  }
+
+  const float chapterProgress = static_cast<float>(section->currentPage) / static_cast<float>(section->pageCount);
+  return chapterProgress >= completionTriggerSpineProgress;
+}
+
+void EpubReaderActivity::queueCompletionPromptIfNeeded() {
+  if (completionPromptShown || completionPromptQueued || stats.isCompleted || footnoteDepth > 0) {
+    return;
+  }
+
+  if (isAtOrPastCompletionTrigger()) {
+    completionPromptQueued = true;
+  }
+}
+
 void EpubReaderActivity::onEnter() {
   Activity::onEnter();
   pageLoadRetryCount = 0;
@@ -133,6 +206,8 @@ void EpubReaderActivity::onEnter() {
   globalStats.totalSessions++;
   globalStats.save();
 
+  initializeCompletionPromptTrigger();
+
   // Save current epub as last opened epub and add to recent books
   APP_STATE.openEpubPath = epub->getPath();
   APP_STATE.saveToFile();
@@ -174,6 +249,21 @@ void EpubReaderActivity::loop() {
   if (!epub) {
     // Should never happen
     finish();
+    return;
+  }
+
+  if (completionPromptQueued) {
+    completionPromptQueued = false;
+    completionPromptShown = true;
+    startActivityForResult(
+        std::make_unique<ConfirmationActivity>(renderer, mappedInput, tr(STR_MARK_FINISHED_PROMPT_TITLE),
+                                               tr(STR_MARK_FINISHED_PROMPT_BODY)),
+        [this](const ActivityResult& result) {
+          if (!result.isCancelled) {
+            setBookCompleted(true);
+          }
+          requestUpdate();
+        });
     return;
   }
 
@@ -601,6 +691,9 @@ void EpubReaderActivity::setBookCompleted(bool isCompleted) {
 
   stats.isCompleted = isCompleted;
   if (isCompleted) {
+    completionPromptShown = true;
+  }
+  if (isCompleted) {
     globalStats.completedBooks++;
   } else if (globalStats.completedBooks > 0) {
     globalStats.completedBooks--;
@@ -883,6 +976,7 @@ void EpubReaderActivity::render(RenderLock&& lock) {
   }
   silentIndexNextChapterIfNeeded(viewportWidth, viewportHeight);
   saveProgress(currentSpineIndex, section->currentPage, section->pageCount);
+  queueCompletionPromptIfNeeded();
 
   if (pendingScreenshot) {
     pendingScreenshot = false;
