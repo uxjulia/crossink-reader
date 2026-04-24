@@ -227,13 +227,13 @@ bool Xtc::generateCoverBmp() const {
       // Write 2-bit BMP header
       const uint32_t imageSize2 = rowSize2 * pageInfo.height;
       const uint32_t fileSize2 = 14 + 40 + 16 + imageSize2;
-      static constexpr uint8_t bmpHeader2[70] = {
-          'B', 'M',  0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    40,   0,    0,   0, 0,
-          0,   0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    1,    0,    2,    0,    0,    0,   0, 0,
-          0,   0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    4,    0,    0,    0,    4,   0, 0,
+      static constexpr uint8_t bmpHeader2[74] = {
+          'B',  'M',  0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    40,   0,   0, 0, 0,
+          0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    1,    0,    2,    0,    0,   0, 0, 0,
+          0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    4,    0,    0,    0,   4, 0, 0,
           0xFF, 0xFF, 0xFF, 0x00, 0xAA, 0xAA, 0xAA, 0x00, 0x55, 0x55, 0x55, 0x00, 0x00, 0x00, 0x00, 0x00};
-      uint8_t hdr[70];
-      memcpy(hdr, bmpHeader2, 70);
+      uint8_t hdr[74];
+      memcpy(hdr, bmpHeader2, 74);
       memcpy(hdr + 2, &fileSize2, 4);
       const uint32_t doff2 = 14 + 40 + 16;
       memcpy(hdr + 10, &doff2, 4);
@@ -245,7 +245,7 @@ bool Xtc::generateCoverBmp() const {
       const uint32_t ppm2 = 2835;
       memcpy(hdr + 38, &ppm2, 4);
       memcpy(hdr + 42, &ppm2, 4);
-      if (coverFile.write(hdr, 70) != 70) {
+      if (coverFile.write(hdr, 74) != 74) {
         LOG_ERR("XTC", "Failed to write 2-bit BMP header");
         coverFile.close();
         tempFile.close();
