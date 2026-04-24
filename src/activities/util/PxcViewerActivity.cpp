@@ -39,7 +39,7 @@ void PxcViewerActivity::onEnter() {
     return;
   }
 
-  if (abs(pxcWidth - screenWidth) > 1 || abs(pxcHeight - screenHeight) > 1) {
+  if (pxcWidth > screenWidth || pxcHeight > screenHeight) {
     LOG_ERR("PXC", "PXC size %dx%d does not match screen %dx%d", pxcWidth, pxcHeight, screenWidth, screenHeight);
     file.close();
     renderer.clearScreen();
@@ -125,7 +125,7 @@ void PxcViewerActivity::renderGrayscaleImage() {
 
   const int screenWidth = renderer.getScreenWidth();
   const int screenHeight = renderer.getScreenHeight();
-  if (abs(pxcWidth - screenWidth) > 1 || abs(pxcHeight - screenHeight) > 1) {
+  if (pxcWidth > screenWidth || pxcHeight > screenHeight) {
     file.close();
     return;
   }

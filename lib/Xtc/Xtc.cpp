@@ -228,12 +228,10 @@ bool Xtc::generateCoverBmp() const {
       const uint32_t imageSize2 = rowSize2 * pageInfo.height;
       const uint32_t fileSize2 = 14 + 40 + 16 + imageSize2;
       static constexpr uint8_t bmpHeader2[70] = {
-          'B', 'M', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-          40, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-          1, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-          0, 0, 0, 0, 4, 0, 0, 0, 4, 0, 0, 0,
-          0xFF, 0xFF, 0xFF, 0x00, 0xAA, 0xAA, 0xAA, 0x00,
-          0x55, 0x55, 0x55, 0x00, 0x00, 0x00, 0x00, 0x00};
+          'B', 'M',  0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    40,   0,    0,   0, 0,
+          0,   0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    1,    0,    2,    0,    0,    0,   0, 0,
+          0,   0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    4,    0,    0,    0,    4,   0, 0,
+          0xFF, 0xFF, 0xFF, 0x00, 0xAA, 0xAA, 0xAA, 0x00, 0x55, 0x55, 0x55, 0x00, 0x00, 0x00, 0x00, 0x00};
       uint8_t hdr[70];
       memcpy(hdr, bmpHeader2, 70);
       memcpy(hdr + 2, &fileSize2, 4);
