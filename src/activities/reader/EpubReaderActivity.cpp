@@ -52,7 +52,7 @@ int clampPercent(int percent) {
 }  // namespace
 
 float EpubReaderActivity::getCurrentBookProgressPercent() const {
-  if (!epub || !section || section->pageCount <= 0 || epub->getBookSize() == 0) {
+  if (!epub || !section || section->pageCount == 0 || epub->getBookSize() == 0) {
     return 0.0f;
   }
 
@@ -108,7 +108,7 @@ void EpubReaderActivity::initializeCompletionPromptTrigger() {
 }
 
 bool EpubReaderActivity::isAtOrPastCompletionTrigger() const {
-  if (!epub || !section || section->pageCount <= 0 || completionTriggerSpineIndex < 0) {
+  if (!epub || !section || section->pageCount == 0 || completionTriggerSpineIndex < 0) {
     return false;
   }
 
