@@ -1071,8 +1071,10 @@ void EpubReaderActivity::renderContents(std::unique_ptr<Page> page, const int or
   (void)heapBefore;
   (void)heapAfter;
 
-  // Force special handling for pages with images when anti-aliasing is on
-  bool imagePageWithAA = page->hasImages() && SETTINGS.textAntiAliasing;
+  const bool pageHasImages = page->hasImages();
+  const bool needsImageGrayscale = pageHasImages;
+  const bool needsTextGrayscale = SETTINGS.textAntiAliasing;
+  const bool needsAnyGrayscale = needsTextGrayscale || needsImageGrayscale;
 
   page->render(renderer, SETTINGS.getReaderFontId(), orientedMarginLeft, orientedMarginTop);
   renderStatusBar();
@@ -1092,7 +1094,7 @@ void EpubReaderActivity::renderContents(std::unique_ptr<Page> page, const int or
   fcm->logStats("bw_render");
   const auto tBwRender = millis();
 
-  if (imagePageWithAA) {
+  if (pageHasImages) {
     // Double FAST_REFRESH with selective image blanking (pablohc's technique):
     // HALF_REFRESH sets particles too firmly for the grayscale LUT to adjust.
     // Instead, blank only the image area and do two fast refreshes.
@@ -1121,18 +1123,25 @@ void EpubReaderActivity::renderContents(std::unique_ptr<Page> page, const int or
   const auto tBwStore = millis();
 
   // grayscale rendering
-  // TODO: Only do this if font supports it
-  if (SETTINGS.textAntiAliasing) {
+  if (needsAnyGrayscale) {
     renderer.clearScreen(0x00);
     renderer.setRenderMode(GfxRenderer::GRAYSCALE_LSB);
-    page->render(renderer, SETTINGS.getReaderFontId(), orientedMarginLeft, orientedMarginTop);
+    if (needsTextGrayscale) {
+      page->render(renderer, SETTINGS.getReaderFontId(), orientedMarginLeft, orientedMarginTop);
+    } else {
+      page->renderImages(renderer, SETTINGS.getReaderFontId(), orientedMarginLeft, orientedMarginTop);
+    }
     renderer.copyGrayscaleLsbBuffers();
     const auto tGrayLsb = millis();
 
     // Render and copy to MSB buffer
     renderer.clearScreen(0x00);
     renderer.setRenderMode(GfxRenderer::GRAYSCALE_MSB);
-    page->render(renderer, SETTINGS.getReaderFontId(), orientedMarginLeft, orientedMarginTop);
+    if (needsTextGrayscale) {
+      page->render(renderer, SETTINGS.getReaderFontId(), orientedMarginLeft, orientedMarginTop);
+    } else {
+      page->renderImages(renderer, SETTINGS.getReaderFontId(), orientedMarginLeft, orientedMarginTop);
+    }
     renderer.copyGrayscaleMsbBuffers();
     const auto tGrayMsb = millis();
 
