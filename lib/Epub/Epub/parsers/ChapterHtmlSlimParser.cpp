@@ -631,7 +631,7 @@ void XMLCALL ChapterHtmlSlimParser::startElement(void* userData, const XML_Char*
         userAlignmentBlockStyle.alignment == CssTextAlign::None) {
       if (!userAlignmentBlockStyle.textIndentDefined || userAlignmentBlockStyle.textIndent == 0) {
         userAlignmentBlockStyle.textIndentDefined = true;
-        userAlignmentBlockStyle.textIndent = static_cast<int16_t>(emSize * 1.5f);
+        userAlignmentBlockStyle.textIndent = static_cast<int16_t>(emSize * 1.0f);
       }
     }
   }
