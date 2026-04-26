@@ -407,27 +407,31 @@ void EpubReaderActivity::loop() {
     return;
   }
 
-  // Side button long-press: change font size (handled before page turn detection)
+  // Side button long-press: change font size.
+  // Always uses Button::Up (increase) and Button::Down (decrease) to keep intuitive
+  // top=bigger / bottom=smaller regardless of the Prev/Next side layout setting.
   if (SETTINGS.sideButtonLongPress == CrossPointSettings::SIDE_LONG_PRESS::SIDE_LONG_FONT_SIZE &&
       mappedInput.getHeldTime() > skipChapterMs) {
-    if (mappedInput.wasReleased(MappedInputManager::Button::PageForward)) {
+    if (mappedInput.wasReleased(MappedInputManager::Button::Up)) {
       if (SETTINGS.fontSize < CrossPointSettings::FONT_SIZE_COUNT - 1) {
         SETTINGS.fontSize++;
         SETTINGS.saveToFile();
         {
           RenderLock lock(*this);
+          GUI.drawPopup(renderer, tr(STR_INDEXING));
           section.reset();
         }
         requestUpdate();
       }
       return;
     }
-    if (mappedInput.wasReleased(MappedInputManager::Button::PageBack)) {
+    if (mappedInput.wasReleased(MappedInputManager::Button::Down)) {
       if (SETTINGS.fontSize > 0) {
         SETTINGS.fontSize--;
         SETTINGS.saveToFile();
         {
           RenderLock lock(*this);
+          GUI.drawPopup(renderer, tr(STR_INDEXING));
           section.reset();
         }
         requestUpdate();
@@ -443,6 +447,7 @@ void EpubReaderActivity::loop() {
     SETTINGS.saveToFile();
     {
       RenderLock lock(*this);
+      GUI.drawPopup(renderer, tr(STR_INDEXING));
       section.reset();
     }
     requestUpdate();
