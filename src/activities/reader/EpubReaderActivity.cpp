@@ -891,7 +891,7 @@ void EpubReaderActivity::render(RenderLock&& lock) {
                                   SETTINGS.extraParagraphSpacing, SETTINGS.forceParagraphIndents,
                                   SETTINGS.paragraphAlignment, viewportWidth, viewportHeight,
                                   SETTINGS.hyphenationEnabled, SETTINGS.embeddedStyle, SETTINGS.imageRendering,
-                                  SETTINGS.bionicReadingEnabled)) {
+                                  SETTINGS.bionicReadingEnabled, SETTINGS.guideReadingEnabled)) {
       LOG_DBG("ERS", "Cache not found, building...");
 
       const auto popupFn = [this]() { GUI.drawPopup(renderer, tr(STR_INDEXING)); };
@@ -900,7 +900,7 @@ void EpubReaderActivity::render(RenderLock&& lock) {
                                       SETTINGS.extraParagraphSpacing, SETTINGS.forceParagraphIndents,
                                       SETTINGS.paragraphAlignment, viewportWidth, viewportHeight,
                                       SETTINGS.hyphenationEnabled, SETTINGS.embeddedStyle, SETTINGS.imageRendering,
-                                      SETTINGS.bionicReadingEnabled, popupFn)) {
+                                      SETTINGS.bionicReadingEnabled, SETTINGS.guideReadingEnabled, popupFn)) {
         LOG_ERR("ERS", "Failed to persist page data to SD");
         section.reset();
         return;
@@ -1048,7 +1048,7 @@ void EpubReaderActivity::silentIndexNextChapterIfNeeded(const uint16_t viewportW
                                   SETTINGS.extraParagraphSpacing, SETTINGS.forceParagraphIndents,
                                   SETTINGS.paragraphAlignment, viewportWidth, viewportHeight,
                                   SETTINGS.hyphenationEnabled, SETTINGS.embeddedStyle, SETTINGS.imageRendering,
-                                  SETTINGS.bionicReadingEnabled)) {
+                                  SETTINGS.bionicReadingEnabled, SETTINGS.guideReadingEnabled)) {
     return;
   }
 
@@ -1057,7 +1057,7 @@ void EpubReaderActivity::silentIndexNextChapterIfNeeded(const uint16_t viewportW
                                      SETTINGS.extraParagraphSpacing, SETTINGS.forceParagraphIndents,
                                      SETTINGS.paragraphAlignment, viewportWidth, viewportHeight,
                                      SETTINGS.hyphenationEnabled, SETTINGS.embeddedStyle, SETTINGS.imageRendering,
-                                     SETTINGS.bionicReadingEnabled)) {
+                                     SETTINGS.bionicReadingEnabled, SETTINGS.guideReadingEnabled)) {
     LOG_ERR("ERS", "Failed silent indexing for chapter: %d", nextSpineIndex);
   }
 }

@@ -177,7 +177,7 @@ void ChapterHtmlSlimParser::startNewTextBlock(const BlockStyle& blockStyle) {
     pendingAnchorId.clear();
   }
   currentTextBlock.reset(new ParsedText(extraParagraphSpacing, forceParagraphIndents, hyphenationEnabled,
-                                        bionicReadingEnabled, blockStyle));
+                                        bionicReadingEnabled, blockStyle, guideReadingEnabled));
   wordsExtractedInBlock = 0;
 }
 
