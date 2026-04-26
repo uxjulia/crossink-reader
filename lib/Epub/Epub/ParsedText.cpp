@@ -116,7 +116,7 @@ void ParsedText::addWord(std::string word, const EpdFontFamily::Style fontStyle,
     baseStyle = static_cast<EpdFontFamily::Style>(baseStyle | EpdFontFamily::UNDERLINE);
   }
 
-  if (!this->focusReadingEnabled) {
+  if (!this->bionicReadingEnabled) {
     words.push_back(std::move(word));
     wordStyles.push_back(baseStyle);
     wordContinues.push_back(attachToPrevious);
