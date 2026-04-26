@@ -99,6 +99,12 @@ inline const std::vector<SettingInfo>& getSettingsList() {
           StrId::STR_SHORT_PWR_BTN, &CrossPointSettings::shortPwrBtn,
           {StrId::STR_IGNORE, StrId::STR_SLEEP, StrId::STR_PAGE_TURN, StrId::STR_FORCE_REFRESH, StrId::STR_CHANGE_FONT},
           "shortPwrBtn", StrId::STR_CAT_CONTROLS),
+      SettingInfo::Enum(
+          StrId::STR_LONG_PRESS_MENU_ACTION, &CrossPointSettings::longPressMenuAction,
+          {StrId::STR_IGNORE, StrId::STR_CHANGE_FONT, StrId::STR_TOGGLE_GUIDE_DOTS, StrId::STR_TOGGLE_BIONIC_READING,
+           StrId::STR_TOGGLE_BOOKMARK, StrId::STR_FORCE_REFRESH, StrId::STR_SYNC_PROGRESS, StrId::STR_MARK_FINISHED,
+           StrId::STR_READING_STATS, StrId::STR_SCREENSHOT_BUTTON, StrId::STR_CYCLE_PAGE_TURN},
+          "longPressMenuAction", StrId::STR_CAT_CONTROLS),
 
       // --- System ---
       SettingInfo::Enum(StrId::STR_TIME_TO_SLEEP, &CrossPointSettings::sleepTimeout,
