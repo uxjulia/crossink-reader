@@ -85,7 +85,7 @@ See [Reading Mode](#4-reading-mode) below for more information.
 The Browse Files screen acts as a file and folder browser.
 
 * **Navigate List:** Use **Left** (or **Volume Up**), or **Right** (or **Volume Down**) to move the selection cursor up and down through folders and books. You can also long-press these buttons to scroll a full page up or down.
-* **Open Selection:** Press **Confirm** to open a folder or read a selected book. 
+* **Open Selection:** Press **Confirm** to open a folder or read a selected book.
 * **Delete Files:** Hold and release **Confirm** to delete the selected file. You will be given an option to either confirm or cancel deletion. Folder deletion is not supported.
 
 ### 3.4 Recent Books Screen
@@ -184,7 +184,7 @@ The Settings screen allows you to configure the device's behavior. There are a f
 - **Long-press Chapter Skip**: Set whether long-pressing page turn buttons skips to the next/previous chapter:
   - "Chapter Skip" (default) - Long-pressing skips to next/previous chapter
   - "Page Scroll" - Long-pressing scrolls a page up/down
-- **Short Power Button Click**: Controls the effect of a short click of the power button:
+- **Short Power Button Action**: Controls the effect of a short click of the power button:
   - "Ignore" (default) - Require a long press to turn off the device
   - "Sleep" - A short press puts the device into sleep mode
   - "Page Turn" - A short press in reading mode turns to the next page; a long press turns the device off
@@ -377,7 +377,7 @@ Once you have opened a book, the button layout changes to facilitate reading.
 
 The role of the volume (side) buttons can be swapped in the **[Controls Settings](#363-controls)**.
 
-If the **Short Power Button Click** setting is set to "Page Turn", you can also turn to the next page by briefly pressing the Power button.
+If the **Short Power Button Action** setting is set to "Page Turn", you can also turn to the next page by briefly pressing the Power button.
 
 ### Chapter Navigation
 * **Next Chapter:** Press and **hold** the **Right** (or **Volume Down**) button briefly, then release.

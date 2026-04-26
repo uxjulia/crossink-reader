@@ -163,7 +163,7 @@ class CrossPointSettings {
   uint8_t extraParagraphSpacing = 1;
   uint8_t forceParagraphIndents = 0;
   uint8_t textAntiAliasing = 1;
-  // Short power button click behaviour
+  // Short power button action behaviour
   uint8_t shortPwrBtn = IGNORE;
   // EPUB reading orientation settings
   // 0 = portrait (default), 1 = landscape clockwise, 2 = inverted, 3 = landscape counter-clockwise
