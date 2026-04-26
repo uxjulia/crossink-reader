@@ -30,14 +30,22 @@ void SettingsActivity::onEnter() {
   controlsSettings.clear();
   systemSettings.clear();
 
-  for (const auto& setting : getSettingsList()) {
-    if (setting.category == StrId::STR_NONE_OPT) continue;
+  const auto& allSettings = getSettingsList();
+  auto addControlSetting = [&](StrId nameId) {
+    for (const auto& s : allSettings) {
+      if (s.nameId == nameId) {
+        controlsSettings.push_back(s);
+        break;
+      }
+    }
+  };
+
+  for (const auto& setting : allSettings) {
+    if (setting.category == StrId::STR_NONE_OPT || setting.category == StrId::STR_CAT_CONTROLS) continue;
     if (setting.category == StrId::STR_CAT_DISPLAY) {
       displaySettings.push_back(setting);
     } else if (setting.category == StrId::STR_CAT_READER) {
       readerSettings.push_back(setting);
-    } else if (setting.category == StrId::STR_CAT_CONTROLS) {
-      controlsSettings.push_back(setting);
     } else if (setting.category == StrId::STR_CAT_SYSTEM) {
       systemSettings.push_back(setting);
     }
@@ -45,10 +53,6 @@ void SettingsActivity::onEnter() {
   }
 
   // Append device-only ACTION items
-  controlsSettings.insert(controlsSettings.begin(), SettingInfo::Action(StrId::STR_REMAP_FRONT_BUTTONS_READER,
-                                                                        SettingAction::RemapFrontButtonsReader));
-  controlsSettings.insert(controlsSettings.begin(),
-                          SettingInfo::Action(StrId::STR_REMAP_FRONT_BUTTONS, SettingAction::RemapFrontButtons));
   systemSettings.push_back(SettingInfo::Action(StrId::STR_WIFI_NETWORKS, SettingAction::Network));
   systemSettings.push_back(SettingInfo::Action(StrId::STR_KOREADER_SYNC, SettingAction::KOReaderSync));
   systemSettings.push_back(SettingInfo::Action(StrId::STR_OPDS_SERVERS, SettingAction::OPDSBrowser));
@@ -56,6 +60,19 @@ void SettingsActivity::onEnter() {
   systemSettings.push_back(SettingInfo::Action(StrId::STR_CHECK_UPDATES, SettingAction::CheckForUpdates));
   systemSettings.push_back(SettingInfo::Action(StrId::STR_LANGUAGE, SettingAction::Language));
   readerSettings.push_back(SettingInfo::Action(StrId::STR_CUSTOMISE_STATUS_BAR, SettingAction::CustomiseStatusBar));
+
+  // Build controls settings with section headers in desired display order
+  controlsSettings.reserve(9);
+  controlsSettings.push_back(SettingInfo::SectionHeader(StrId::STR_CONTROLS_GENERAL));
+  controlsSettings.push_back(SettingInfo::Action(StrId::STR_REMAP_FRONT_BUTTONS, SettingAction::RemapFrontButtons));
+  addControlSetting(StrId::STR_SHORT_PWR_BTN);
+  controlsSettings.push_back(SettingInfo::SectionHeader(StrId::STR_CONTROLS_IN_READER));
+  controlsSettings.push_back(
+      SettingInfo::Action(StrId::STR_REMAP_FRONT_BUTTONS_READER, SettingAction::RemapFrontButtonsReader));
+  addControlSetting(StrId::STR_SIDE_BTN_LAYOUT);
+  addControlSetting(StrId::STR_LONG_PRESS_SKIP);
+  addControlSetting(StrId::STR_SIDE_BTN_LONG_PRESS);
+  addControlSetting(StrId::STR_LONG_PRESS_MENU_ACTION);
 
   // Reset selection to first category
   selectedCategoryIndex = 0;
@@ -105,11 +122,19 @@ void SettingsActivity::loop() {
   // Handle navigation
   buttonNavigator.onNextRelease([this] {
     selectedSettingIndex = ButtonNavigator::nextIndex(selectedSettingIndex, settingsCount + 1);
+    while (selectedSettingIndex > 0 && selectedSettingIndex <= settingsCount &&
+           (*currentSettings)[selectedSettingIndex - 1].type == SettingType::SECTION_HEADER) {
+      selectedSettingIndex = ButtonNavigator::nextIndex(selectedSettingIndex, settingsCount + 1);
+    }
     requestUpdate();
   });
 
   buttonNavigator.onPreviousRelease([this] {
     selectedSettingIndex = ButtonNavigator::previousIndex(selectedSettingIndex, settingsCount + 1);
+    while (selectedSettingIndex > 0 && selectedSettingIndex <= settingsCount &&
+           (*currentSettings)[selectedSettingIndex - 1].type == SettingType::SECTION_HEADER) {
+      selectedSettingIndex = ButtonNavigator::previousIndex(selectedSettingIndex, settingsCount + 1);
+    }
     requestUpdate();
   });
 
@@ -142,6 +167,11 @@ void SettingsActivity::loop() {
         break;
     }
     settingsCount = static_cast<int>(currentSettings->size());
+    // Advance past any leading section headers
+    while (selectedSettingIndex > 0 && selectedSettingIndex <= settingsCount &&
+           (*currentSettings)[selectedSettingIndex - 1].type == SettingType::SECTION_HEADER) {
+      selectedSettingIndex++;
+    }
   }
 }
 
@@ -251,7 +281,7 @@ void SettingsActivity::render(RenderLock&&) {
         }
         return valueText;
       },
-      true);
+      true, [&settings](int i) { return settings[i].type == SettingType::SECTION_HEADER; });
 
   // Draw CrossInk version label at the bottom of the System tab
   if (selectedCategoryIndex == 3) {

@@ -14,6 +14,7 @@
 #include <functional>
 #include <limits>
 
+#include "../settings/KOReaderSettingsActivity.h"
 #include "BookStatsActivity.h"
 #include "CrossPointSettings.h"
 #include "CrossPointState.h"
@@ -35,6 +36,7 @@
 namespace {
 // pagesPerRefresh now comes from SETTINGS.getRefreshFrequency()
 constexpr unsigned long skipChapterMs = 700;
+constexpr unsigned long longPressMenuMs = 600;
 // seconds per page, ordered slowest to fastest; index 0 is unused (off state)
 constexpr std::array<int, 8> PAGE_TURN_INTERVALS_S = {0, 60, 45, 30, 20, 15, 10, 5};
 constexpr int MAX_PAGE_LOAD_RETRIES = 3;
@@ -317,6 +319,19 @@ void EpubReaderActivity::loop() {
     }
   }
 
+  if (pendingCompletedFeedback) {
+    const bool timedOut = (millis() - completedFeedbackShowTime) >= 1000UL;
+    const bool navPressed = mappedInput.wasReleased(MappedInputManager::Button::Left) ||
+                            mappedInput.wasReleased(MappedInputManager::Button::Right) ||
+                            mappedInput.wasReleased(MappedInputManager::Button::Up) ||
+                            mappedInput.wasReleased(MappedInputManager::Button::Down);
+    if (timedOut || navPressed) {
+      pendingCompletedFeedback = false;
+      requestUpdate();
+      return;
+    }
+  }
+
   if (automaticPageTurnActive) {
     if (mappedInput.wasReleased(MappedInputManager::Button::Confirm) ||
         mappedInput.wasReleased(MappedInputManager::Button::Back)) {
@@ -341,6 +356,13 @@ void EpubReaderActivity::loop() {
       pageTurn(true);
       return;
     }
+  }
+
+  // Long-press Confirm: execute the configured reader action without opening the menu
+  if (SETTINGS.longPressMenuAction != CrossPointSettings::LONG_MENU_OFF &&
+      mappedInput.wasReleased(MappedInputManager::Button::Confirm) && mappedInput.getHeldTime() >= longPressMenuMs) {
+    executeLongPressMenuAction();
+    return;
   }
 
   // Enter reader menu activity.
@@ -786,6 +808,101 @@ void EpubReaderActivity::onReaderMenuConfirm(EpubReaderMenuActivity::MenuAction 
   }
 }
 
+void EpubReaderActivity::executeLongPressMenuAction() {
+  switch (SETTINGS.longPressMenuAction) {
+    case CrossPointSettings::LONG_MENU_CHANGE_FONT: {
+      SETTINGS.fontFamily = (SETTINGS.fontFamily + 1) % CrossPointSettings::FONT_FAMILY_COUNT;
+      SETTINGS.saveToFile();
+      {
+        RenderLock lock(*this);
+        GUI.drawPopup(renderer, tr(STR_INDEXING));
+        if (section) {
+          cachedSpineIndex = currentSpineIndex;
+          cachedChapterTotalPageCount = section->pageCount;
+          nextPageNumber = section->currentPage;
+        }
+        section.reset();
+      }
+      requestUpdate();
+      break;
+    }
+    case CrossPointSettings::LONG_MENU_TOGGLE_GUIDE_DOTS: {
+      SETTINGS.guideReadingEnabled = !SETTINGS.guideReadingEnabled;
+      SETTINGS.saveToFile();
+      {
+        RenderLock lock(*this);
+        GUI.drawPopup(renderer, tr(STR_INDEXING));
+        if (section) {
+          cachedSpineIndex = currentSpineIndex;
+          cachedChapterTotalPageCount = section->pageCount;
+          nextPageNumber = section->currentPage;
+        }
+        section.reset();
+      }
+      requestUpdate();
+      break;
+    }
+    case CrossPointSettings::LONG_MENU_TOGGLE_BIONIC: {
+      SETTINGS.bionicReadingEnabled = !SETTINGS.bionicReadingEnabled;
+      SETTINGS.saveToFile();
+      {
+        RenderLock lock(*this);
+        GUI.drawPopup(renderer, tr(STR_INDEXING));
+        if (section) {
+          cachedSpineIndex = currentSpineIndex;
+          cachedChapterTotalPageCount = section->pageCount;
+          nextPageNumber = section->currentPage;
+        }
+        section.reset();
+      }
+      requestUpdate();
+      break;
+    }
+    case CrossPointSettings::LONG_MENU_TOGGLE_BOOKMARK:
+      onReaderMenuConfirm(EpubReaderMenuActivity::MenuAction::BOOKMARK_TOGGLE);
+      break;
+    case CrossPointSettings::LONG_MENU_REFRESH_SCREEN:
+      pagesUntilFullRefresh = 1;  // Forces HALF_REFRESH on next render
+      requestUpdate();
+      break;
+    case CrossPointSettings::LONG_MENU_SYNC_PROGRESS:
+      if (KOREADER_STORE.hasCredentials()) {
+        onReaderMenuConfirm(EpubReaderMenuActivity::MenuAction::SYNC);
+      } else {
+        startActivityForResult(std::make_unique<KOReaderSettingsActivity>(renderer, mappedInput),
+                               [this](const ActivityResult&) { SETTINGS.saveToFile(); });
+      }
+      break;
+    case CrossPointSettings::LONG_MENU_MARK_FINISHED: {
+      setBookCompleted(!stats.isCompleted);
+      completedFeedbackIsFinished = stats.isCompleted;
+      pendingCompletedFeedback = true;
+      completedFeedbackShowTime = millis();
+      requestUpdate();
+      break;
+    }
+    case CrossPointSettings::LONG_MENU_READING_STATS:
+      onReaderMenuConfirm(EpubReaderMenuActivity::MenuAction::READING_STATS);
+      break;
+    case CrossPointSettings::LONG_MENU_SCREENSHOT:
+      onReaderMenuConfirm(EpubReaderMenuActivity::MenuAction::SCREENSHOT);
+      break;
+    case CrossPointSettings::LONG_MENU_CYCLE_PAGE_TURN: {
+      // Cycle Off->5s->10s->15s->20s->30s->45s->60s->Off (indices: 0,7,6,5,4,3,2,1)
+      if (currentPageTurnOption == 0) {
+        currentPageTurnOption = static_cast<uint8_t>(PAGE_TURN_INTERVALS_S.size() - 1);
+      } else {
+        currentPageTurnOption--;
+      }
+      toggleAutoPageTurn(currentPageTurnOption);
+      requestUpdate();
+      break;
+    }
+    default:
+      break;
+  }
+}
+
 void EpubReaderActivity::setBookCompleted(bool isCompleted) {
   if (stats.isCompleted == isCompleted) {
     return;
@@ -838,6 +955,7 @@ void EpubReaderActivity::applyOrientation(const uint8_t orientation) {
 }
 
 void EpubReaderActivity::toggleAutoPageTurn(const uint8_t selectedPageTurnOption) {
+  currentPageTurnOption = selectedPageTurnOption;
   if (selectedPageTurnOption == 0 || selectedPageTurnOption >= PAGE_TURN_INTERVALS_S.size()) {
     automaticPageTurnActive = false;
     return;
@@ -1173,6 +1291,19 @@ void EpubReaderActivity::renderContents(std::unique_ptr<Page> page, const int or
   renderStatusBar();
   if (pendingBookmarkFeedback) {
     const char* msg = bookmarkFeedbackIsAdd ? tr(STR_BOOKMARK_ADDED) : tr(STR_BOOKMARK_REMOVED);
+    constexpr int toastPadX = 20;
+    constexpr int toastPadY = 12;
+    const int msgW = renderer.getTextWidth(UI_10_FONT_ID, msg);
+    const int msgH = renderer.getLineHeight(UI_10_FONT_ID);
+    const int toastW = msgW + toastPadX * 2;
+    const int toastH = msgH + toastPadY * 2;
+    const int toastX = (renderer.getScreenWidth() - toastW) / 2;
+    const int toastY = (renderer.getScreenHeight() - toastH) / 2;
+    renderer.fillRect(toastX, toastY, toastW, toastH, true);
+    renderer.drawText(UI_10_FONT_ID, toastX + toastPadX, toastY + toastPadY, msg, false);
+  }
+  if (pendingCompletedFeedback) {
+    const char* msg = completedFeedbackIsFinished ? tr(STR_MARKED_FINISHED) : tr(STR_MARKED_UNFINISHED);
     constexpr int toastPadX = 20;
     constexpr int toastPadY = 12;
     const int msgW = renderer.getTextWidth(UI_10_FONT_ID, msg);

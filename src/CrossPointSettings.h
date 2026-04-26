@@ -145,6 +145,22 @@ class CrossPointSettings {
   // Image rendering in EPUB reader
   enum IMAGE_RENDERING { IMAGES_DISPLAY = 0, IMAGES_PLACEHOLDER = 1, IMAGES_SUPPRESS = 2, IMAGE_RENDERING_COUNT };
 
+  // Long-press Confirm (menu button) quick action in reader
+  enum LONG_PRESS_MENU_ACTION {
+    LONG_MENU_OFF = 0,
+    LONG_MENU_CHANGE_FONT = 1,
+    LONG_MENU_TOGGLE_GUIDE_DOTS = 2,
+    LONG_MENU_TOGGLE_BIONIC = 3,
+    LONG_MENU_TOGGLE_BOOKMARK = 4,
+    LONG_MENU_REFRESH_SCREEN = 5,
+    LONG_MENU_SYNC_PROGRESS = 6,
+    LONG_MENU_MARK_FINISHED = 7,
+    LONG_MENU_READING_STATS = 8,
+    LONG_MENU_SCREENSHOT = 9,
+    LONG_MENU_CYCLE_PAGE_TURN = 10,
+    LONG_PRESS_MENU_ACTION_COUNT
+  };
+
   // Sleep screen settings
   uint8_t sleepScreen = DARK;
   // Sleep screen cover mode settings
@@ -223,6 +239,8 @@ class CrossPointSettings {
   uint8_t moveFinishedToReadFolder = 0;
   // Image rendering mode in EPUB reader
   uint8_t imageRendering = IMAGES_DISPLAY;
+  // Long-press Confirm (menu button) quick action in reader (0 = off)
+  uint8_t longPressMenuAction = LONG_MENU_OFF;
 
   ~CrossPointSettings() = default;
 
