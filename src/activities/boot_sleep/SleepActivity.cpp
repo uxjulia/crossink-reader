@@ -17,6 +17,21 @@
 #include "fontIds.h"
 #include "images/Logo120.h"
 
+namespace {
+void drawEnteringSleepOverlay(const GfxRenderer& r, const void*) {
+  constexpr int margin = 15;
+  const char* msg = tr(STR_ENTERING_SLEEP);
+  const int y = static_cast<int>(r.getScreenHeight() * 0.075f);
+  const int textWidth = r.getTextWidth(UI_12_FONT_ID, msg, EpdFontFamily::BOLD);
+  const int w = textWidth + margin * 2;
+  const int h = r.getLineHeight(UI_12_FONT_ID) + margin * 2;
+  const int x = (r.getScreenWidth() - w) / 2;
+  r.fillRect(x - 2, y - 2, w + 4, h + 4, true);
+  r.fillRect(x, y, w, h, false);
+  r.drawText(UI_12_FONT_ID, x + margin, y + margin - 2, msg, true, EpdFontFamily::BOLD);
+}
+}  // namespace
+
 void SleepActivity::onEnter() {
   Activity::onEnter();
   GUI.drawPopup(renderer, tr(STR_ENTERING_SLEEP));
@@ -247,20 +262,7 @@ void SleepActivity::renderPxcSleepScreen(const std::string& path) const {
           }
           free(rowBuf);
         },
-        &ctx,
-        [](const GfxRenderer& r, const void*) {
-          constexpr int margin = 15;
-          const char* msg = tr(STR_ENTERING_SLEEP);
-          const int y = static_cast<int>(r.getScreenHeight() * 0.075f);
-          const int textWidth = r.getTextWidth(UI_12_FONT_ID, msg, EpdFontFamily::BOLD);
-          const int w = textWidth + margin * 2;
-          const int h = r.getLineHeight(UI_12_FONT_ID) + margin * 2;
-          const int x = (r.getScreenWidth() - w) / 2;
-          r.fillRect(x - 2, y - 2, w + 4, h + 4, true);
-          r.fillRect(x, y, w, h, false);
-          r.drawText(UI_12_FONT_ID, x + margin, y + margin - 2, msg, true, EpdFontFamily::BOLD);
-        },
-        nullptr);
+        &ctx, &drawEnteringSleepOverlay, nullptr);
   } else {
     // BLACK_AND_WHITE / INVERTED_BLACK_AND_WHITE: threshold PXC to 1-bit
     // (pv 0=Black, 1=DarkGrey map to dark; 2=LightGrey, 3=White map to light)
@@ -354,20 +356,7 @@ void SleepActivity::renderBitmapSleepScreen(const Bitmap& bitmap) const {
           const auto* c = static_cast<const BitmapGrayCtx*>(raw);
           r.drawBitmap(*c->bitmap, c->x, c->y, c->maxWidth, c->maxHeight, c->cropX, c->cropY);
         },
-        &grayCtx,
-        [](const GfxRenderer& r, const void*) {
-          constexpr int margin = 15;
-          const char* msg = tr(STR_ENTERING_SLEEP);
-          const int y = static_cast<int>(r.getScreenHeight() * 0.075f);
-          const int textWidth = r.getTextWidth(UI_12_FONT_ID, msg, EpdFontFamily::BOLD);
-          const int w = textWidth + margin * 2;
-          const int h = r.getLineHeight(UI_12_FONT_ID) + margin * 2;
-          const int x = (r.getScreenWidth() - w) / 2;
-          r.fillRect(x - 2, y - 2, w + 4, h + 4, true);
-          r.fillRect(x, y, w, h, false);
-          r.drawText(UI_12_FONT_ID, x + margin, y + margin - 2, msg, true, EpdFontFamily::BOLD);
-        },
-        nullptr);
+        &grayCtx, &drawEnteringSleepOverlay, nullptr);
   } else {
     renderer.clearScreen();
     renderer.drawBitmap(bitmap, x, y, pageWidth, pageHeight, cropX, cropY);
@@ -458,8 +447,10 @@ void SleepActivity::renderCoverSleepScreen() const {
         return (this->*renderNoCoverSleepScreen)();
       }
       LOG_DBG("SLP", "Direct XTC page render: %ux%u", lastXtc.getPageWidth(), lastXtc.getPageHeight());
-      renderer.clearScreen();
-      renderer.displayBuffer(HalDisplay::HALF_REFRESH);
+      if (!APP_STATE.lastSleepFromReader) {
+        renderer.clearScreen();
+        renderer.displayBuffer(HalDisplay::HALF_REFRESH);
+      }
       renderer.displayXtcBwPage(pageBuffer, lastXtc.getPageWidth(), lastXtc.getPageHeight());
       free(pageBuffer);
       return;

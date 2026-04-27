@@ -45,6 +45,12 @@ int clampPercent(int percent) {
 
 }  // namespace
 
+void EpubReaderActivity::renderPageCallback(const GfxRenderer& r, const void* raw) {
+  const auto* c = static_cast<const PageRenderCtx*>(raw);
+  c->page->render(const_cast<GfxRenderer&>(r), c->fontId, c->left, c->top);
+  c->activity->renderStatusBar();
+}
+
 void EpubReaderActivity::onEnter() {
   Activity::onEnter();
 
@@ -779,22 +785,12 @@ void EpubReaderActivity::renderContents(std::unique_ptr<Page> page, const int or
 
   // grayscale rendering
   if (SETTINGS.textAntiAliasing) {
-    struct PageRenderCtx {
-      Page* page;
-      int fontId, left, top;
-      const EpubReaderActivity* activity;
-    };
     PageRenderCtx grayCtx{page.get(), SETTINGS.getReaderFontId(), orientedMarginLeft, orientedMarginTop, this};
-    const auto grayFn = [](const GfxRenderer& r, const void* raw) {
-      const auto* c = static_cast<const PageRenderCtx*>(raw);
-      c->page->render(const_cast<GfxRenderer&>(r), c->fontId, c->left, c->top);
-      c->activity->renderStatusBar();
-    };
 
     const auto tGrayStart = millis();
     const auto grayMode =
         useFactoryGray ? GfxRenderer::GrayscaleMode::FactoryQuality : GfxRenderer::GrayscaleMode::Differential;
-    renderer.renderGrayscale(grayMode, grayFn, &grayCtx);
+    renderer.renderGrayscale(grayMode, &renderPageCallback, &grayCtx);
     const auto tGrayEnd = millis();
     fcm->logStats(useFactoryGray ? "gray_factory_quality" : "gray");
 
@@ -831,19 +827,8 @@ void EpubReaderActivity::onScreenshotRequest() {
   auto p = section->loadPageFromSectionFile();
   if (!p) return;
 
-  struct PageRenderCtx {
-    Page* page;
-    int fontId, left, top;
-    const EpubReaderActivity* activity;
-  };
   PageRenderCtx grayCtx{p.get(), SETTINGS.getReaderFontId(), lastFactoryMarginLeft, lastFactoryMarginTop, this};
-  const auto grayFn = [](const GfxRenderer& r, const void* raw) {
-    const auto* c = static_cast<const PageRenderCtx*>(raw);
-    c->page->render(const_cast<GfxRenderer&>(r), c->fontId, c->left, c->top);
-    c->activity->renderStatusBar();
-  };
-
-  renderer.renderGrayscale(GfxRenderer::GrayscaleMode::FactoryQuality, grayFn, &grayCtx);
+  renderer.renderGrayscale(GfxRenderer::GrayscaleMode::FactoryQuality, &renderPageCallback, &grayCtx);
   renderer.clearScreen();
   renderer.cleanupGrayscaleWithFrameBuffer();
 }
