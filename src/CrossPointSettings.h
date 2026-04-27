@@ -163,16 +163,17 @@ class CrossPointSettings {
   // Long-press Confirm (menu button) quick action in reader
   enum LONG_PRESS_MENU_ACTION {
     LONG_MENU_OFF = 0,
-    LONG_MENU_CHANGE_FONT = 1,
-    LONG_MENU_TOGGLE_GUIDE_DOTS = 2,
-    LONG_MENU_TOGGLE_BIONIC = 3,
-    LONG_MENU_TOGGLE_BOOKMARK = 4,
-    LONG_MENU_REFRESH_SCREEN = 5,
-    LONG_MENU_SYNC_PROGRESS = 6,
-    LONG_MENU_MARK_FINISHED = 7,
-    LONG_MENU_READING_STATS = 8,
-    LONG_MENU_SCREENSHOT = 9,
-    LONG_MENU_CYCLE_PAGE_TURN = 10,
+    LONG_MENU_SLEEP = 1,
+    LONG_MENU_CHANGE_FONT = 2,
+    LONG_MENU_TOGGLE_GUIDE_DOTS = 3,
+    LONG_MENU_TOGGLE_BIONIC = 4,
+    LONG_MENU_TOGGLE_BOOKMARK = 5,
+    LONG_MENU_REFRESH_SCREEN = 6,
+    LONG_MENU_SYNC_PROGRESS = 7,
+    LONG_MENU_MARK_FINISHED = 8,
+    LONG_MENU_READING_STATS = 9,
+    LONG_MENU_SCREENSHOT = 10,
+    LONG_MENU_CYCLE_PAGE_TURN = 11,
     LONG_PRESS_MENU_ACTION_COUNT
   };
 
@@ -196,6 +197,8 @@ class CrossPointSettings {
   uint8_t textAntiAliasing = 1;
   // Short power button action behaviour
   uint8_t shortPwrBtn = IGNORE;
+  // Long power button action behaviour
+  uint8_t longPwrBtn = SLEEP;
   // EPUB reading orientation settings
   // 0 = portrait (default), 1 = landscape clockwise, 2 = inverted, 3 = landscape counter-clockwise
   uint8_t orientation = PORTRAIT;
@@ -262,9 +265,14 @@ class CrossPointSettings {
   // Get singleton instance
   static CrossPointSettings& getInstance() { return instance; }
 
-  uint16_t getPowerButtonDuration() const {
-    return (shortPwrBtn == CrossPointSettings::SHORT_PWRBTN::SLEEP) ? 10 : 400;
+  static constexpr uint16_t POWER_BUTTON_WAKE_SHORT_MS = 10;
+  static constexpr uint16_t POWER_BUTTON_LONG_PRESS_MS = 400;
+
+  uint16_t getPowerButtonWakeDuration() const {
+    return (shortPwrBtn == CrossPointSettings::SHORT_PWRBTN::SLEEP) ? POWER_BUTTON_WAKE_SHORT_MS
+                                                                    : POWER_BUTTON_LONG_PRESS_MS;
   }
+  uint16_t getPowerButtonLongPressDuration() const { return POWER_BUTTON_LONG_PRESS_MS; }
   int getReaderFontId() const;
 
   // If count_only is true, returns the number of settings items that would be written.

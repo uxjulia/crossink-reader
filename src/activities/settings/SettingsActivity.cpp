@@ -62,17 +62,19 @@ void SettingsActivity::onEnter() {
   readerSettings.push_back(SettingInfo::Action(StrId::STR_CUSTOMISE_STATUS_BAR, SettingAction::CustomiseStatusBar));
 
   // Build controls settings with section headers in desired display order
-  controlsSettings.reserve(9);
-  controlsSettings.push_back(SettingInfo::SectionHeader(StrId::STR_CONTROLS_GENERAL));
-  controlsSettings.push_back(SettingInfo::Action(StrId::STR_REMAP_FRONT_BUTTONS, SettingAction::RemapFrontButtons));
+  controlsSettings.reserve(11);
+  controlsSettings.push_back(SettingInfo::SectionHeader(StrId::STR_POWER_BUTTON));
   addControlSetting(StrId::STR_SHORT_PWR_BTN);
-  controlsSettings.push_back(SettingInfo::SectionHeader(StrId::STR_CONTROLS_IN_READER));
+  addControlSetting(StrId::STR_LONG_PRESS_ACTION);
+  controlsSettings.push_back(SettingInfo::SectionHeader(StrId::STR_FRONT_BUTTONS));
+  controlsSettings.push_back(SettingInfo::Action(StrId::STR_REMAP_FRONT_BUTTONS, SettingAction::RemapFrontButtons));
   controlsSettings.push_back(
       SettingInfo::Action(StrId::STR_REMAP_FRONT_BUTTONS_READER, SettingAction::RemapFrontButtonsReader));
+  addControlSetting(StrId::STR_LONG_PRESS_MENU_ACTION);
+  controlsSettings.push_back(SettingInfo::SectionHeader(StrId::STR_SIDE_BUTTONS));
   addControlSetting(StrId::STR_SIDE_BTN_LAYOUT);
   addControlSetting(StrId::STR_LONG_PRESS_SKIP);
   addControlSetting(StrId::STR_SIDE_BTN_LONG_PRESS);
-  addControlSetting(StrId::STR_LONG_PRESS_MENU_ACTION);
 
   // Reset selection to first category
   selectedCategoryIndex = 0;

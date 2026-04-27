@@ -31,6 +31,8 @@
 #include "activities/util/ConfirmationActivity.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
+
+void enterDeepSleep();
 #include "util/ScreenshotUtil.h"
 
 namespace {
@@ -476,6 +478,9 @@ void EpubReaderActivity::loop() {
   if (executeShortPowerButtonAction()) {
     return;
   }
+  if (executeLongPowerButtonAction()) {
+    return;
+  }
 
   auto [prevTriggered, nextTriggered, fromSideBtn] = ReaderUtils::detectPageTurn(mappedInput);
   if (!prevTriggered && !nextTriggered) {
@@ -813,6 +818,9 @@ void EpubReaderActivity::reindexCurrentSection() {
 
 void EpubReaderActivity::executeReaderQuickAction(CrossPointSettings::LONG_PRESS_MENU_ACTION action) {
   switch (action) {
+    case CrossPointSettings::LONG_MENU_SLEEP:
+      enterDeepSleep();
+      break;
     case CrossPointSettings::LONG_MENU_CHANGE_FONT:
       SETTINGS.fontFamily = (SETTINGS.fontFamily + 1) % CrossPointSettings::FONT_FAMILY_COUNT;
       reindexCurrentSection();
@@ -868,11 +876,51 @@ void EpubReaderActivity::executeReaderQuickAction(CrossPointSettings::LONG_PRESS
 }
 
 bool EpubReaderActivity::executeShortPowerButtonAction() {
-  if (!mappedInput.wasReleased(MappedInputManager::Button::Power)) {
+  if (!mappedInput.wasReleased(MappedInputManager::Button::Power) ||
+      mappedInput.getHeldTime() >= SETTINGS.getPowerButtonLongPressDuration()) {
     return false;
   }
 
   switch (SETTINGS.shortPwrBtn) {
+    case CrossPointSettings::SHORT_PWRBTN::TOGGLE_FONT:
+      executeReaderQuickAction(CrossPointSettings::LONG_MENU_CHANGE_FONT);
+      return true;
+    case CrossPointSettings::SHORT_PWRBTN::TOGGLE_GUIDE_DOTS:
+      executeReaderQuickAction(CrossPointSettings::LONG_MENU_TOGGLE_GUIDE_DOTS);
+      return true;
+    case CrossPointSettings::SHORT_PWRBTN::TOGGLE_BIONIC_READING:
+      executeReaderQuickAction(CrossPointSettings::LONG_MENU_TOGGLE_BIONIC);
+      return true;
+    case CrossPointSettings::SHORT_PWRBTN::TOGGLE_BOOKMARK:
+      executeReaderQuickAction(CrossPointSettings::LONG_MENU_TOGGLE_BOOKMARK);
+      return true;
+    case CrossPointSettings::SHORT_PWRBTN::SYNC_PROGRESS:
+      executeReaderQuickAction(CrossPointSettings::LONG_MENU_SYNC_PROGRESS);
+      return true;
+    case CrossPointSettings::SHORT_PWRBTN::MARK_FINISHED:
+      executeReaderQuickAction(CrossPointSettings::LONG_MENU_MARK_FINISHED);
+      return true;
+    case CrossPointSettings::SHORT_PWRBTN::READING_STATS:
+      executeReaderQuickAction(CrossPointSettings::LONG_MENU_READING_STATS);
+      return true;
+    case CrossPointSettings::SHORT_PWRBTN::SCREENSHOT:
+      executeReaderQuickAction(CrossPointSettings::LONG_MENU_SCREENSHOT);
+      return true;
+    case CrossPointSettings::SHORT_PWRBTN::CYCLE_PAGE_TURN:
+      executeReaderQuickAction(CrossPointSettings::LONG_MENU_CYCLE_PAGE_TURN);
+      return true;
+    default:
+      return false;
+  }
+}
+
+bool EpubReaderActivity::executeLongPowerButtonAction() {
+  if (!mappedInput.wasReleased(MappedInputManager::Button::Power) ||
+      mappedInput.getHeldTime() < SETTINGS.getPowerButtonLongPressDuration()) {
+    return false;
+  }
+
+  switch (SETTINGS.longPwrBtn) {
     case CrossPointSettings::SHORT_PWRBTN::TOGGLE_FONT:
       executeReaderQuickAction(CrossPointSettings::LONG_MENU_CHANGE_FONT);
       return true;

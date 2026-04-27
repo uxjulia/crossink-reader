@@ -81,6 +81,7 @@ class EpubReaderActivity final : public Activity {
   void reindexCurrentSection();
   void executeReaderQuickAction(CrossPointSettings::LONG_PRESS_MENU_ACTION action);
   bool executeShortPowerButtonAction();
+  bool executeLongPowerButtonAction();
   void onReaderMenuConfirm(EpubReaderMenuActivity::MenuAction action);
   void applyOrientation(uint8_t orientation);
   void executeLongPressMenuAction();

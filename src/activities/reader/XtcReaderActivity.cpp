@@ -96,8 +96,12 @@ void XtcReaderActivity::loop() {
                                      : mappedInput.wasReleased(MappedInputManager::Button::PageForward);
   const bool frontPrev = frontUsePress ? mappedInput.wasPressed(MappedInputManager::Button::Left)
                                        : mappedInput.wasReleased(MappedInputManager::Button::Left);
-  const bool powerPageTurn = SETTINGS.shortPwrBtn == CrossPointSettings::SHORT_PWRBTN::PAGE_TURN &&
-                             mappedInput.wasReleased(MappedInputManager::Button::Power);
+  const bool powerReleased = mappedInput.wasReleased(MappedInputManager::Button::Power);
+  const bool shortPowerTurn = SETTINGS.shortPwrBtn == CrossPointSettings::SHORT_PWRBTN::PAGE_TURN && powerReleased &&
+                              mappedInput.getHeldTime() < SETTINGS.getPowerButtonLongPressDuration();
+  const bool longPowerTurn = SETTINGS.longPwrBtn == CrossPointSettings::SHORT_PWRBTN::PAGE_TURN && powerReleased &&
+                             mappedInput.getHeldTime() >= SETTINGS.getPowerButtonLongPressDuration();
+  const bool powerPageTurn = shortPowerTurn || longPowerTurn;
   const bool frontNext = frontUsePress ? (mappedInput.wasPressed(MappedInputManager::Button::Right) || powerPageTurn)
                                        : (mappedInput.wasReleased(MappedInputManager::Button::Right) || powerPageTurn);
 

@@ -165,7 +165,8 @@ void verifyPowerButtonDuration() {
     return;
   }
 
-  // Give the user up to 1000ms to start holding the power button, and must hold for SETTINGS.getPowerButtonDuration()
+  // Give the user up to 1000ms to start holding the power button, and must hold for
+  // SETTINGS.getPowerButtonWakeDuration()
   const auto start = millis();
   bool abort = false;
   // Subtract the current time, because inputManager only starts counting the HeldTime from the first update()
@@ -173,7 +174,7 @@ void verifyPowerButtonDuration() {
   // assuming the button was held until now from millis()==0 (i.e. device start time).
   const uint16_t calibration = start;
   const uint16_t calibratedPressDuration =
-      (calibration < SETTINGS.getPowerButtonDuration()) ? SETTINGS.getPowerButtonDuration() - calibration : 1;
+      (calibration < SETTINGS.getPowerButtonWakeDuration()) ? SETTINGS.getPowerButtonWakeDuration() - calibration : 1;
 
   gpio.update();
   // Needed because inputManager.isPressed() may take up to ~500ms to return the correct state
@@ -204,6 +205,34 @@ void waitForPowerRelease() {
   while (gpio.isPressed(HalGPIO::BTN_POWER)) {
     delay(50);
     gpio.update();
+  }
+}
+
+void enterDeepSleep();
+
+CrossPointSettings::SHORT_PWRBTN getReleasedPowerButtonAction() {
+  if (!mappedInputManager.wasReleased(MappedInputManager::Button::Power)) {
+    return CrossPointSettings::SHORT_PWRBTN::IGNORE;
+  }
+
+  return mappedInputManager.getHeldTime() < SETTINGS.getPowerButtonLongPressDuration()
+             ? static_cast<CrossPointSettings::SHORT_PWRBTN>(SETTINGS.shortPwrBtn)
+             : static_cast<CrossPointSettings::SHORT_PWRBTN>(SETTINGS.longPwrBtn);
+}
+
+bool handleGlobalPowerButtonAction(const CrossPointSettings::SHORT_PWRBTN action) {
+  switch (action) {
+    case CrossPointSettings::SHORT_PWRBTN::SLEEP:
+      enterDeepSleep();
+      return true;
+    case CrossPointSettings::SHORT_PWRBTN::FORCE_REFRESH: {
+      LOG_DBG("MAIN", "Manual screen refresh triggered");
+      RenderLock lock;
+      renderer.displayBuffer(HalDisplay::HALF_REFRESH);
+      return true;
+    }
+    default:
+      return false;
   }
 }
 
@@ -317,7 +346,7 @@ void setup() {
   switch (wakeupReason) {
     case HalGPIO::WakeupReason::PowerButton:
       LOG_DBG("MAIN", "Verifying power button press duration");
-      gpio.verifyPowerButtonWakeup(SETTINGS.getPowerButtonDuration(),
+      gpio.verifyPowerButtonWakeup(SETTINGS.getPowerButtonWakeDuration(),
                                    SETTINGS.shortPwrBtn == CrossPointSettings::SHORT_PWRBTN::SLEEP);
       break;
     case HalGPIO::WakeupReason::AfterUSBPower:
@@ -427,23 +456,9 @@ void loop() {
     return;
   }
 
-  if (gpio.isPressed(HalGPIO::BTN_POWER) && gpio.getHeldTime() > SETTINGS.getPowerButtonDuration()) {
-    // If the screenshot combination is potentially being pressed, don't sleep
-    if (gpio.isPressed(HalGPIO::BTN_DOWN)) {
-      return;
-    }
-    enterDeepSleep();
-    // This should never be hit as `enterDeepSleep` calls esp_deep_sleep_start
+  if (handleGlobalPowerButtonAction(getReleasedPowerButtonAction())) {
     lastActivityTime = millis();
     return;
-  }
-
-  // Refresh screen when power button is short-pressed with FORCE_REFRESH setting.
-  if (SETTINGS.shortPwrBtn == CrossPointSettings::SHORT_PWRBTN::FORCE_REFRESH &&
-      mappedInputManager.wasReleased(MappedInputManager::Button::Power)) {
-    LOG_DBG("MAIN", "Manual screen refresh triggered");
-    RenderLock lock;
-    renderer.displayBuffer(HalDisplay::HALF_REFRESH);
   }
 
   // Refresh the battery icon when USB is plugged or unplugged.
