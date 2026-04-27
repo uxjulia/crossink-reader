@@ -472,22 +472,7 @@ void EpubReaderActivity::loop() {
     }
   }
 
-  // Short power button: cycle font family
-  if (SETTINGS.shortPwrBtn == CrossPointSettings::SHORT_PWRBTN::TOGGLE_FONT &&
-      mappedInput.wasReleased(MappedInputManager::Button::Power)) {
-    SETTINGS.fontFamily = (SETTINGS.fontFamily + 1) % CrossPointSettings::FONT_FAMILY_COUNT;
-    SETTINGS.saveToFile();
-    {
-      RenderLock lock(*this);
-      GUI.drawPopup(renderer, tr(STR_INDEXING));
-      if (section) {
-        cachedSpineIndex = currentSpineIndex;
-        cachedChapterTotalPageCount = section->pageCount;
-        nextPageNumber = section->currentPage;
-      }
-      section.reset();
-    }
-    requestUpdate();
+  if (executeShortPowerButtonAction()) {
     return;
   }
 
@@ -808,56 +793,35 @@ void EpubReaderActivity::onReaderMenuConfirm(EpubReaderMenuActivity::MenuAction 
   }
 }
 
-void EpubReaderActivity::executeLongPressMenuAction() {
-  switch (SETTINGS.longPressMenuAction) {
-    case CrossPointSettings::LONG_MENU_CHANGE_FONT: {
+void EpubReaderActivity::reindexCurrentSection() {
+  SETTINGS.saveToFile();
+  {
+    RenderLock lock(*this);
+    GUI.drawPopup(renderer, tr(STR_INDEXING));
+    if (section) {
+      cachedSpineIndex = currentSpineIndex;
+      cachedChapterTotalPageCount = section->pageCount;
+      nextPageNumber = section->currentPage;
+    }
+    section.reset();
+  }
+  requestUpdate();
+}
+
+void EpubReaderActivity::executeReaderQuickAction(CrossPointSettings::LONG_PRESS_MENU_ACTION action) {
+  switch (action) {
+    case CrossPointSettings::LONG_MENU_CHANGE_FONT:
       SETTINGS.fontFamily = (SETTINGS.fontFamily + 1) % CrossPointSettings::FONT_FAMILY_COUNT;
-      SETTINGS.saveToFile();
-      {
-        RenderLock lock(*this);
-        GUI.drawPopup(renderer, tr(STR_INDEXING));
-        if (section) {
-          cachedSpineIndex = currentSpineIndex;
-          cachedChapterTotalPageCount = section->pageCount;
-          nextPageNumber = section->currentPage;
-        }
-        section.reset();
-      }
-      requestUpdate();
+      reindexCurrentSection();
       break;
-    }
-    case CrossPointSettings::LONG_MENU_TOGGLE_GUIDE_DOTS: {
+    case CrossPointSettings::LONG_MENU_TOGGLE_GUIDE_DOTS:
       SETTINGS.guideReadingEnabled = !SETTINGS.guideReadingEnabled;
-      SETTINGS.saveToFile();
-      {
-        RenderLock lock(*this);
-        GUI.drawPopup(renderer, tr(STR_INDEXING));
-        if (section) {
-          cachedSpineIndex = currentSpineIndex;
-          cachedChapterTotalPageCount = section->pageCount;
-          nextPageNumber = section->currentPage;
-        }
-        section.reset();
-      }
-      requestUpdate();
+      reindexCurrentSection();
       break;
-    }
-    case CrossPointSettings::LONG_MENU_TOGGLE_BIONIC: {
+    case CrossPointSettings::LONG_MENU_TOGGLE_BIONIC:
       SETTINGS.bionicReadingEnabled = !SETTINGS.bionicReadingEnabled;
-      SETTINGS.saveToFile();
-      {
-        RenderLock lock(*this);
-        GUI.drawPopup(renderer, tr(STR_INDEXING));
-        if (section) {
-          cachedSpineIndex = currentSpineIndex;
-          cachedChapterTotalPageCount = section->pageCount;
-          nextPageNumber = section->currentPage;
-        }
-        section.reset();
-      }
-      requestUpdate();
+      reindexCurrentSection();
       break;
-    }
     case CrossPointSettings::LONG_MENU_TOGGLE_BOOKMARK:
       onReaderMenuConfirm(EpubReaderMenuActivity::MenuAction::BOOKMARK_TOGGLE);
       break;
@@ -873,21 +837,20 @@ void EpubReaderActivity::executeLongPressMenuAction() {
                                [this](const ActivityResult&) { SETTINGS.saveToFile(); });
       }
       break;
-    case CrossPointSettings::LONG_MENU_MARK_FINISHED: {
+    case CrossPointSettings::LONG_MENU_MARK_FINISHED:
       setBookCompleted(!stats.isCompleted);
       completedFeedbackIsFinished = stats.isCompleted;
       pendingCompletedFeedback = true;
       completedFeedbackShowTime = millis();
       requestUpdate();
       break;
-    }
     case CrossPointSettings::LONG_MENU_READING_STATS:
       onReaderMenuConfirm(EpubReaderMenuActivity::MenuAction::READING_STATS);
       break;
     case CrossPointSettings::LONG_MENU_SCREENSHOT:
       onReaderMenuConfirm(EpubReaderMenuActivity::MenuAction::SCREENSHOT);
       break;
-    case CrossPointSettings::LONG_MENU_CYCLE_PAGE_TURN: {
+    case CrossPointSettings::LONG_MENU_CYCLE_PAGE_TURN:
       // Cycle Off->5s->10s->15s->20s->30s->45s->60s->Off (indices: 0,7,6,5,4,3,2,1)
       if (currentPageTurnOption == 0) {
         currentPageTurnOption = static_cast<uint8_t>(PAGE_TURN_INTERVALS_S.size() - 1);
@@ -897,10 +860,52 @@ void EpubReaderActivity::executeLongPressMenuAction() {
       toggleAutoPageTurn(currentPageTurnOption);
       requestUpdate();
       break;
-    }
+    case CrossPointSettings::LONG_MENU_OFF:
     default:
       break;
   }
+}
+
+bool EpubReaderActivity::executeShortPowerButtonAction() {
+  if (!mappedInput.wasReleased(MappedInputManager::Button::Power)) {
+    return false;
+  }
+
+  switch (SETTINGS.shortPwrBtn) {
+    case CrossPointSettings::SHORT_PWRBTN::TOGGLE_FONT:
+      executeReaderQuickAction(CrossPointSettings::LONG_MENU_CHANGE_FONT);
+      return true;
+    case CrossPointSettings::SHORT_PWRBTN::TOGGLE_GUIDE_DOTS:
+      executeReaderQuickAction(CrossPointSettings::LONG_MENU_TOGGLE_GUIDE_DOTS);
+      return true;
+    case CrossPointSettings::SHORT_PWRBTN::TOGGLE_BIONIC_READING:
+      executeReaderQuickAction(CrossPointSettings::LONG_MENU_TOGGLE_BIONIC);
+      return true;
+    case CrossPointSettings::SHORT_PWRBTN::TOGGLE_BOOKMARK:
+      executeReaderQuickAction(CrossPointSettings::LONG_MENU_TOGGLE_BOOKMARK);
+      return true;
+    case CrossPointSettings::SHORT_PWRBTN::SYNC_PROGRESS:
+      executeReaderQuickAction(CrossPointSettings::LONG_MENU_SYNC_PROGRESS);
+      return true;
+    case CrossPointSettings::SHORT_PWRBTN::MARK_FINISHED:
+      executeReaderQuickAction(CrossPointSettings::LONG_MENU_MARK_FINISHED);
+      return true;
+    case CrossPointSettings::SHORT_PWRBTN::READING_STATS:
+      executeReaderQuickAction(CrossPointSettings::LONG_MENU_READING_STATS);
+      return true;
+    case CrossPointSettings::SHORT_PWRBTN::SCREENSHOT:
+      executeReaderQuickAction(CrossPointSettings::LONG_MENU_SCREENSHOT);
+      return true;
+    case CrossPointSettings::SHORT_PWRBTN::CYCLE_PAGE_TURN:
+      executeReaderQuickAction(CrossPointSettings::LONG_MENU_CYCLE_PAGE_TURN);
+      return true;
+    default:
+      return false;
+  }
+}
+
+void EpubReaderActivity::executeLongPressMenuAction() {
+  executeReaderQuickAction(static_cast<CrossPointSettings::LONG_PRESS_MENU_ACTION>(SETTINGS.longPressMenuAction));
 }
 
 void EpubReaderActivity::setBookCompleted(bool isCompleted) {

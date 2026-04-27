@@ -134,7 +134,22 @@ class CrossPointSettings {
   };
 
   // Short power button press actions
-  enum SHORT_PWRBTN { IGNORE = 0, SLEEP = 1, PAGE_TURN = 2, FORCE_REFRESH = 3, TOGGLE_FONT = 4, SHORT_PWRBTN_COUNT };
+  enum SHORT_PWRBTN {
+    IGNORE = 0,
+    SLEEP = 1,
+    PAGE_TURN = 2,
+    FORCE_REFRESH = 3,
+    TOGGLE_FONT = 4,
+    TOGGLE_GUIDE_DOTS = 5,
+    TOGGLE_BIONIC_READING = 6,
+    TOGGLE_BOOKMARK = 7,
+    SYNC_PROGRESS = 8,
+    MARK_FINISHED = 9,
+    READING_STATS = 10,
+    SCREENSHOT = 11,
+    CYCLE_PAGE_TURN = 12,
+    SHORT_PWRBTN_COUNT
+  };
 
   // Hide battery percentage
   enum HIDE_BATTERY_PERCENTAGE { HIDE_NEVER = 0, HIDE_READER = 1, HIDE_ALWAYS = 2, HIDE_BATTERY_PERCENTAGE_COUNT };
