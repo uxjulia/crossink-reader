@@ -105,7 +105,7 @@ bool Section::loadSectionFile(const int fontId, const float lineCompression, con
     bool fileHyphenationEnabled;
     bool fileEmbeddedStyle;
     uint8_t fileImageRendering;
-    bool filebionicReadingEnabled;
+    bool fileBionicReadingEnabled;
     bool fileGuideReadingEnabled;
     serialization::readPod(file, fileFontId);
     serialization::readPod(file, fileLineCompression);
@@ -117,7 +117,7 @@ bool Section::loadSectionFile(const int fontId, const float lineCompression, con
     serialization::readPod(file, fileHyphenationEnabled);
     serialization::readPod(file, fileEmbeddedStyle);
     serialization::readPod(file, fileImageRendering);
-    serialization::readPod(file, filebionicReadingEnabled);
+    serialization::readPod(file, fileBionicReadingEnabled);
     serialization::readPod(file, fileGuideReadingEnabled);
 
     if (fontId != fileFontId || lineCompression != fileLineCompression ||
@@ -125,7 +125,7 @@ bool Section::loadSectionFile(const int fontId, const float lineCompression, con
         paragraphAlignment != fileParagraphAlignment || viewportWidth != fileViewportWidth ||
         viewportHeight != fileViewportHeight || hyphenationEnabled != fileHyphenationEnabled ||
         embeddedStyle != fileEmbeddedStyle || imageRendering != fileImageRendering ||
-        bionicReadingEnabled != filebionicReadingEnabled || guideReadingEnabled != fileGuideReadingEnabled) {
+        bionicReadingEnabled != fileBionicReadingEnabled || guideReadingEnabled != fileGuideReadingEnabled) {
       file.close();
       LOG_ERR("SCT", "Deserialization failed: Parameters do not match");
       clearCache();

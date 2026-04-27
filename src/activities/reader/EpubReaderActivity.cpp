@@ -22,6 +22,7 @@
 #include "EpubReaderChapterSelectionActivity.h"
 #include "EpubReaderFootnotesActivity.h"
 #include "EpubReaderPercentSelectionActivity.h"
+#include "GlobalActions.h"
 #include "KOReaderCredentialStore.h"
 #include "KOReaderSyncActivity.h"
 #include "MappedInputManager.h"
@@ -31,8 +32,6 @@
 #include "activities/util/ConfirmationActivity.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
-
-void enterDeepSleep();
 #include "util/ScreenshotUtil.h"
 
 namespace {
@@ -440,36 +439,14 @@ void EpubReaderActivity::loop() {
     if (mappedInput.wasReleased(MappedInputManager::Button::Up)) {
       if (SETTINGS.fontSize < CrossPointSettings::FONT_SIZE_COUNT - 1) {
         SETTINGS.fontSize++;
-        SETTINGS.saveToFile();
-        {
-          RenderLock lock(*this);
-          GUI.drawPopup(renderer, tr(STR_INDEXING));
-          if (section) {
-            cachedSpineIndex = currentSpineIndex;
-            cachedChapterTotalPageCount = section->pageCount;
-            nextPageNumber = section->currentPage;
-          }
-          section.reset();
-        }
-        requestUpdate();
+        reindexCurrentSection();
       }
       return;
     }
     if (mappedInput.wasReleased(MappedInputManager::Button::Down)) {
       if (SETTINGS.fontSize > 0) {
         SETTINGS.fontSize--;
-        SETTINGS.saveToFile();
-        {
-          RenderLock lock(*this);
-          GUI.drawPopup(renderer, tr(STR_INDEXING));
-          if (section) {
-            cachedSpineIndex = currentSpineIndex;
-            cachedChapterTotalPageCount = section->pageCount;
-            nextPageNumber = section->currentPage;
-          }
-          section.reset();
-        }
-        requestUpdate();
+        reindexCurrentSection();
       }
       return;
     }
@@ -848,9 +825,11 @@ void EpubReaderActivity::executeReaderQuickAction(CrossPointSettings::LONG_PRESS
                                [this](const ActivityResult&) { SETTINGS.saveToFile(); });
       }
       break;
-    case CrossPointSettings::LONG_MENU_MARK_FINISHED:
-      setBookCompleted(!stats.isCompleted);
-      showCompletedFeedback(stats.isCompleted);
+    case CrossPointSettings::LONG_MENU_MARK_FINISHED: {
+      const bool newCompleted = !stats.isCompleted;
+      setBookCompleted(newCompleted);
+      showCompletedFeedback(newCompleted);
+    }
       requestUpdate();
       break;
     case CrossPointSettings::LONG_MENU_READING_STATS:

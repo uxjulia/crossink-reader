@@ -18,6 +18,7 @@
 #include "AppVersion.h"
 #include "CrossPointSettings.h"
 #include "CrossPointState.h"
+#include "GlobalActions.h"
 #include "KOReaderCredentialStore.h"
 #include "MappedInputManager.h"
 #include "OpdsServerStore.h"
@@ -207,8 +208,6 @@ void waitForPowerRelease() {
     gpio.update();
   }
 }
-
-void enterDeepSleep();
 
 CrossPointSettings::SHORT_PWRBTN getReleasedPowerButtonAction() {
   if (!mappedInputManager.wasReleased(MappedInputManager::Button::Power)) {

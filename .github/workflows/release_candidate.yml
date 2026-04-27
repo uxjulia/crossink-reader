@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build-release-candidate:
@@ -39,8 +39,9 @@ jobs:
       - name: Set version from branch
         run: |
           VERSION="${GITHUB_REF_NAME#release/}-RC"
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-          sed -i "s/crossink_version = .*/crossink_version = $VERSION/" platformio.ini
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          escaped_version=$(printf '%s\n' "$VERSION" | sed 's/[&|]/\\&/g')
+          sed -i "s|^crossink_version = .*|crossink_version = ${escaped_version}|" platformio.ini
 
       - name: Build CrossPoint
         run: pio run -e tiny -e xlarge -e no_emoji

@@ -276,23 +276,31 @@ void BaseTheme::drawList(const GfxRenderer& renderer, Rect rect, int itemCount, 
   // Draw selection (skip header rows)
   int contentWidth = rect.width - 5;
   const auto pageStartIndex = selectedIndex / pageItems * pageItems;
+  const int rectBottom = rect.y + rect.height;
   if (selectedIndex >= 0 && !(isHeader && isHeader(selectedIndex))) {
     int selY = rect.y;
     for (int j = pageStartIndex; j < selectedIndex; j++) {
       selY += rowHeight;
       if (isHeader && isHeader(j + 1)) selY += sectionHeaderTopPadding;
     }
-    renderer.fillRect(0, selY - 2, rect.width, rowHeight);
+    if (selY + rowHeight <= rectBottom) {
+      renderer.fillRect(0, selY - 2, rect.width, rowHeight);
+    }
   }
 
   // Draw all items using a running Y to accommodate variable-height section headers
   int currentY = rect.y;
   for (int i = pageStartIndex; i < itemCount && i < pageStartIndex + pageItems; i++) {
-    if (i > pageStartIndex && isHeader && isHeader(i)) currentY += sectionHeaderTopPadding;
+    const bool headerRow = isHeader && isHeader(i);
+    const int rowPadding = (i > pageStartIndex && headerRow) ? sectionHeaderTopPadding : 0;
+    if (currentY + rowPadding + rowHeight > rectBottom) {
+      break;
+    }
+    currentY += rowPadding;
     const int itemY = currentY;
     currentY += rowHeight;
 
-    if (isHeader && isHeader(i)) {
+    if (headerRow) {
       // Section header: bold uppercase label + divider line below
       std::string label = rowTitle(i);
       std::transform(label.begin(), label.end(), label.begin(),

@@ -125,7 +125,7 @@ void XtcReaderActivity::loop() {
   }
 
   const bool skipPages =
-      mappedInput.getHeldTime() > skipPageMs &&
+      !powerPageTurn && mappedInput.getHeldTime() > skipPageMs &&
       (fromSideBtn ? SETTINGS.sideButtonLongPress == CrossPointSettings::SIDE_LONG_PRESS::SIDE_LONG_CHAPTER_SKIP
                    : static_cast<bool>(SETTINGS.longPressChapterSkip));
   const int skipAmount = skipPages ? 10 : 1;

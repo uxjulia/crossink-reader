@@ -122,6 +122,8 @@ Added `guideReadingEnabled` (bool) to the header after `focusReadingEnabled`. Gu
 
 ### Version 22
 
+Added `forceParagraphIndents` (bool) to the header after `extraParagraphSpacing`. This keeps cache invalidation aligned with the reader setting that synthesizes first-line indents when paragraph spacing is enabled.
+
 ImHex Pattern:
 
 ```c++
@@ -130,7 +132,7 @@ import std.string;
 import std.core;
 
 // === Configuration ===
-#define EXPECTED_VERSION 22
+#define EXPECTED_VERSION 26
 #define MAX_STRING_LENGTH 65535
 
 // === String Structure ===
