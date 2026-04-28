@@ -4,11 +4,37 @@
 #include <Logging.h>
 #include <common/FsApiConstants.h>
 
+#include "util/StringUtils.h"
+
+namespace {
+
+std::string clippingPathForBook(const std::string& bookTitle, const std::string& author) {
+  const std::string safeTitle = StringUtils::sanitizeFilename(bookTitle.empty() ? "book" : bookTitle, 80);
+  const std::string safeAuthor = StringUtils::sanitizeFilename(author, 40);
+
+  std::string filename = safeTitle;
+  if (!safeAuthor.empty() && safeAuthor != "book") {
+    filename += " - ";
+    filename += safeAuthor;
+  }
+  filename += ".txt";
+
+  return std::string(ClippingsManager::CLIPPINGS_DIR) + "/" + filename;
+}
+
+}
+
 bool ClippingsManager::saveClipping(const std::string& bookTitle, const std::string& author,
                                     const std::string& chapterTitle, int pageNumber, const std::string& selectedText) {
-  HalFile file = Storage.open(CLIPPINGS_PATH, O_RDWR | O_CREAT | O_AT_END);
+  if (!Storage.mkdir(CLIPPINGS_DIR)) {
+    LOG_ERR("CLIP", "Failed to create %s", CLIPPINGS_DIR);
+    return false;
+  }
+
+  const std::string clippingPath = clippingPathForBook(bookTitle, author);
+  HalFile file = Storage.open(clippingPath.c_str(), O_RDWR | O_CREAT | O_AT_END);
   if (!file) {
-    LOG_ERR("CLIP", "Failed to open %s for append", CLIPPINGS_PATH);
+    LOG_ERR("CLIP", "Failed to open %s for append", clippingPath.c_str());
     return false;
   }
 
@@ -51,10 +77,10 @@ bool ClippingsManager::saveClipping(const std::string& bookTitle, const std::str
   file.close();
 
   if (!ok) {
-    LOG_ERR("CLIP", "Failed to write clipping to %s (SD full or removed?)", CLIPPINGS_PATH);
+    LOG_ERR("CLIP", "Failed to write clipping to %s (SD full or removed?)", clippingPath.c_str());
     return false;
   }
 
-  LOG_DBG("CLIP", "Saved clipping to %s (%zu chars)", CLIPPINGS_PATH, textLen);
+  LOG_DBG("CLIP", "Saved clipping to %s (%zu chars)", clippingPath.c_str(), textLen);
   return true;
 }
