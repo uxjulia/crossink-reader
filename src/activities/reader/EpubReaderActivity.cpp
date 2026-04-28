@@ -924,6 +924,9 @@ void EpubReaderActivity::executeReaderQuickAction(CrossPointSettings::LONG_PRESS
     case CrossPointSettings::LONG_MENU_SCREENSHOT:
       onReaderMenuConfirm(EpubReaderMenuActivity::MenuAction::SCREENSHOT);
       break;
+    case CrossPointSettings::LONG_MENU_SAVE_CLIPPING:
+      onReaderMenuConfirm(EpubReaderMenuActivity::MenuAction::SAVE_CLIPPING);
+      break;
     case CrossPointSettings::LONG_MENU_CYCLE_PAGE_TURN:
       // Cycle Off->5s->10s->15s->20s->30s->45s->60s->Off (indices: 0,7,6,5,4,3,2,1)
       if (currentPageTurnOption == 0) {
@@ -974,6 +977,9 @@ bool EpubReaderActivity::executeShortPowerButtonAction() {
     case CrossPointSettings::SHORT_PWRBTN::CYCLE_PAGE_TURN:
       executeReaderQuickAction(CrossPointSettings::LONG_MENU_CYCLE_PAGE_TURN);
       return true;
+    case CrossPointSettings::SHORT_PWRBTN::SAVE_CLIPPING:
+      executeReaderQuickAction(CrossPointSettings::LONG_MENU_SAVE_CLIPPING);
+      return true;
     default:
       return false;
   }
@@ -1012,6 +1018,9 @@ bool EpubReaderActivity::executeLongPowerButtonAction() {
       return true;
     case CrossPointSettings::SHORT_PWRBTN::CYCLE_PAGE_TURN:
       executeReaderQuickAction(CrossPointSettings::LONG_MENU_CYCLE_PAGE_TURN);
+      return true;
+    case CrossPointSettings::SHORT_PWRBTN::SAVE_CLIPPING:
+      executeReaderQuickAction(CrossPointSettings::LONG_MENU_SAVE_CLIPPING);
       return true;
     default:
       return false;
