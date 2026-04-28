@@ -17,6 +17,7 @@
 
 #include "../settings/KOReaderSettingsActivity.h"
 #include "BookStatsActivity.h"
+#include "ClipSelectionActivity.h"
 #include "CrossPointSettings.h"
 #include "CrossPointState.h"
 #include "EpubReaderBookmarkListActivity.h"
@@ -31,6 +32,7 @@
 #include "ReaderUtils.h"
 #include "RecentBooksStore.h"
 #include "activities/util/ConfirmationActivity.h"
+#include "clippings/ClippingsManager.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
 #include "util/ScreenshotUtil.h"
@@ -301,6 +303,10 @@ void EpubReaderActivity::loop() {
     // Should never happen
     finish();
     return;
+  }
+
+  if (!mappedInput.isPressed(MappedInputManager::Button::Power)) {
+    longPowerActionHandled = false;
   }
 
   if (completionPromptQueued) {
@@ -689,6 +695,79 @@ void EpubReaderActivity::onReaderMenuConfirm(EpubReaderMenuActivity::MenuAction 
       requestUpdate();
       break;
     }
+    case EpubReaderMenuActivity::MenuAction::SAVE_CLIPPING: {
+      if (section && epub) {
+        int mTop, mRight, mBottom, mLeft;
+        renderer.getOrientedViewableTRBL(&mTop, &mRight, &mBottom, &mLeft);
+        mTop += SETTINGS.screenMargin;
+        mLeft += SETTINGS.screenMargin;
+
+        const int readerFontId = SETTINGS.getReaderFontId();
+        const int lineH = renderer.getLineHeight(readerFontId);
+        const int startPage = section->currentPage;
+        const int pagesToLoad = std::min(3, section->pageCount - startPage);
+
+        std::vector<ClipSelectionActivity::WordRef> words;
+        words.reserve(pagesToLoad * 60);
+
+        for (int pi = 0; pi < pagesToLoad; ++pi) {
+          section->currentPage = startPage + pi;
+          auto page = section->loadPageFromSectionFile();
+          if (!page) {
+            break;
+          }
+
+          for (const auto& el : page->elements) {
+            if (el->getTag() != TAG_PageLine) {
+              continue;
+            }
+            const auto& line = static_cast<const PageLine&>(*el);
+            if (!line.getBlock()) {
+              continue;
+            }
+            const auto& block = *line.getBlock();
+            const auto& xpos = block.getWordXpos();
+            const auto& wlist = block.getWords();
+
+            for (int i = 0; i < static_cast<int>(wlist.size()); ++i) {
+              const int wx = mLeft + line.xPos + xpos[i];
+              const int wy = mTop + line.yPos;
+              const int ww = renderer.getTextWidth(readerFontId, wlist[i].c_str());
+              if (ww > 0) {
+                words.push_back({wx, wy, ww, lineH, pi, wlist[i]});
+              }
+            }
+          }
+        }
+        section->currentPage = startPage;
+
+        if (!words.empty()) {
+          std::string chapterTitle;
+          const int tocIdx = epub->getTocIndexForSpineIndex(currentSpineIndex);
+          if (tocIdx >= 0) {
+            chapterTitle = epub->getTocItem(tocIdx).title;
+          }
+
+          startActivityForResult(
+              std::make_unique<ClipSelectionActivity>(renderer, mappedInput, std::move(words), epub->getTitle(),
+                                                      epub->getAuthor(), chapterTitle, startPage + 1, readerFontId,
+                                                      *section, startPage, mTop, mLeft),
+              [this, chapterTitle, startPage](const ActivityResult& result) {
+                if (!result.isCancelled) {
+                  const auto& clip = std::get<ClippingResult>(result.data);
+                  if (!clip.text.empty()) {
+                    ClippingsManager::saveClipping(epub->getTitle(), epub->getAuthor(), chapterTitle, startPage + 1,
+                                                   clip.text);
+                  }
+                }
+                requestUpdate();
+              });
+        } else {
+          requestUpdate();
+        }
+      }
+      break;
+    }
     case EpubReaderMenuActivity::MenuAction::READING_STATS: {
       // Include elapsed time from the current session in the display stats.
       BookReadingStats displayStats = stats;
@@ -849,6 +928,9 @@ void EpubReaderActivity::executeReaderQuickAction(CrossPointSettings::LONG_PRESS
     case CrossPointSettings::LONG_MENU_SCREENSHOT:
       onReaderMenuConfirm(EpubReaderMenuActivity::MenuAction::SCREENSHOT);
       break;
+    case CrossPointSettings::LONG_MENU_SAVE_CLIPPING:
+      onReaderMenuConfirm(EpubReaderMenuActivity::MenuAction::SAVE_CLIPPING);
+      break;
     case CrossPointSettings::LONG_MENU_CYCLE_PAGE_TURN:
       // Cycle Off->5s->10s->15s->20s->30s->45s->60s->Off (indices: 0,7,6,5,4,3,2,1)
       if (currentPageTurnOption == 0) {
@@ -899,16 +981,21 @@ bool EpubReaderActivity::executeShortPowerButtonAction() {
     case CrossPointSettings::SHORT_PWRBTN::CYCLE_PAGE_TURN:
       executeReaderQuickAction(CrossPointSettings::LONG_MENU_CYCLE_PAGE_TURN);
       return true;
+    case CrossPointSettings::SHORT_PWRBTN::SAVE_CLIPPING:
+      executeReaderQuickAction(CrossPointSettings::LONG_MENU_SAVE_CLIPPING);
+      return true;
     default:
       return false;
   }
 }
 
 bool EpubReaderActivity::executeLongPowerButtonAction() {
-  if (!mappedInput.wasReleased(MappedInputManager::Button::Power) ||
-      mappedInput.getHeldTime() < SETTINGS.getPowerButtonLongPressDuration()) {
+  if (!mappedInput.isPressed(MappedInputManager::Button::Power) ||
+      mappedInput.getHeldTime() < SETTINGS.getPowerButtonLongPressDuration() || longPowerActionHandled) {
     return false;
   }
+
+  longPowerActionHandled = true;
 
   switch (SETTINGS.longPwrBtn) {
     case CrossPointSettings::SHORT_PWRBTN::TOGGLE_FONT:
@@ -937,6 +1024,9 @@ bool EpubReaderActivity::executeLongPowerButtonAction() {
       return true;
     case CrossPointSettings::SHORT_PWRBTN::CYCLE_PAGE_TURN:
       executeReaderQuickAction(CrossPointSettings::LONG_MENU_CYCLE_PAGE_TURN);
+      return true;
+    case CrossPointSettings::SHORT_PWRBTN::SAVE_CLIPPING:
+      executeReaderQuickAction(CrossPointSettings::LONG_MENU_SAVE_CLIPPING);
       return true;
     default:
       return false;
