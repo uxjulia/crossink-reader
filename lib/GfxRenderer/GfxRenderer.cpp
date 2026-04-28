@@ -110,6 +110,7 @@ static void renderCharImpl(const GfxRenderer& renderer, GfxRenderer::RenderMode 
     }
 
     if (is2Bit) {
+      const bool forceMonoGray2 = renderMode == GfxRenderer::GRAY2_LSB && renderer.getSecondaryFrameBuffer() != nullptr;
       int pixelPosition = 0;
       for (int glyphY = 0; glyphY < height; glyphY++) {
         const int outerCoord = outerBase + glyphY;
@@ -130,7 +131,12 @@ static void renderCharImpl(const GfxRenderer& renderer, GfxRenderer::RenderMode 
           // 0 -> black, 1 -> dark grey, 2 -> light grey, 3 -> white
           const uint8_t bmpVal = 3 - ((byte >> bit_index) & 0x3);
 
-          if (renderMode == GfxRenderer::BW && bmpVal < 3) {
+          if (forceMonoGray2 && bmpVal < 3) {
+            // Single-pass factory image renders use GRAY2_LSB with a secondary
+            // framebuffer. Collapse text to solid black so image grayscale can
+            // run even when text anti-aliasing is disabled.
+            renderer.drawPixel(screenX, screenY, false);
+          } else if (renderMode == GfxRenderer::BW && bmpVal < 3) {
             // Black (also paints over the grays in BW mode)
             renderer.drawPixel(screenX, screenY, pixelState);
           } else if (renderMode == GfxRenderer::GRAYSCALE_MSB && (bmpVal == 1 || bmpVal == 2)) {

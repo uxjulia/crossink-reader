@@ -1375,7 +1375,7 @@ void EpubReaderActivity::renderContents(std::unique_ptr<Page> page, const int or
   const auto tBwRender = millis();
 
   const bool isImagePage = page->hasImages();
-  const bool useFactoryGray = SETTINGS.textAntiAliasing && isImagePage;
+  const bool useFactoryGray = isImagePage;
   lastPageWasFactoryGray = useFactoryGray;
   if (useFactoryGray) {
     lastFactoryMarginTop = orientedMarginTop;
@@ -1390,13 +1390,17 @@ void EpubReaderActivity::renderContents(std::unique_ptr<Page> page, const int or
   const auto tBwStore = millis();
 
   // grayscale rendering
-  if (SETTINGS.textAntiAliasing) {
+  if (SETTINGS.textAntiAliasing || useFactoryGray) {
     PageRenderCtx grayCtx{page.get(), SETTINGS.getReaderFontId(), orientedMarginLeft, orientedMarginTop, this};
 
     const auto tGrayStart = millis();
-    const auto grayMode =
-        useFactoryGray ? GfxRenderer::GrayscaleMode::FactoryQuality : GfxRenderer::GrayscaleMode::Differential;
-    renderer.renderGrayscale(grayMode, &renderPageCallback, &grayCtx);
+    if (useFactoryGray && !SETTINGS.textAntiAliasing) {
+      renderer.renderGrayscaleSinglePass(GfxRenderer::GrayscaleMode::FactoryQuality, &renderPageCallback, &grayCtx);
+    } else {
+      const auto grayMode =
+          useFactoryGray ? GfxRenderer::GrayscaleMode::FactoryQuality : GfxRenderer::GrayscaleMode::Differential;
+      renderer.renderGrayscale(grayMode, &renderPageCallback, &grayCtx);
+    }
     const auto tGrayEnd = millis();
     fcm->logStats(useFactoryGray ? "gray_factory_quality" : "gray");
 
