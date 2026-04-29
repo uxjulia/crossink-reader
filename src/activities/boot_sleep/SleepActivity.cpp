@@ -214,17 +214,14 @@ enum class OverlayDrawResult : uint8_t { NotFound, Drawn, Failed };
 void SleepActivity::onEnter() {
   Activity::onEnter();
 
-  // For OVERLAY mode the popup is suppressed so the frame buffer (reader page) stays intact
-  if (SETTINGS.sleepScreen != CrossPointSettings::SLEEP_SCREEN_MODE::OVERLAY) {
-    // Show the popup in the reader's orientation when sleep starts from an open book.
-    // Reset to portrait afterwards so the sleep screen renderer keeps its existing layout.
-    if (APP_STATE.lastSleepFromReader) {
-      ReaderUtils::applyOrientation(renderer, SETTINGS.orientation);
-      GUI.drawPopup(renderer, tr(STR_ENTERING_SLEEP));
-      renderer.setOrientation(GfxRenderer::Orientation::Portrait);
-    } else {
-      GUI.drawPopup(renderer, tr(STR_ENTERING_SLEEP));
-    }
+  // Show the popup in the reader's orientation when sleep starts from an open book.
+  // Reset to portrait afterwards so the sleep screen renderer keeps its existing layout.
+  if (APP_STATE.lastSleepFromReader) {
+    ReaderUtils::applyOrientation(renderer, SETTINGS.orientation);
+    GUI.drawPopup(renderer, tr(STR_ENTERING_SLEEP));
+    renderer.setOrientation(GfxRenderer::Orientation::Portrait);
+  } else {
+    GUI.drawPopup(renderer, tr(STR_ENTERING_SLEEP));
   }
 
   switch (SETTINGS.sleepScreen) {
