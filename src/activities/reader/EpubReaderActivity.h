@@ -42,6 +42,7 @@ class EpubReaderActivity final : public Activity {
   uint8_t currentPageTurnOption = 0;
   bool longPressMenuHandled = false;
   bool longPowerButtonHandled = false;
+  bool sideButtonLongPressHandled = false;
   int pageLoadRetryCount = 0;
   bool pendingBookmarkFeedback = false;
   bool bookmarkFeedbackIsAdd = false;

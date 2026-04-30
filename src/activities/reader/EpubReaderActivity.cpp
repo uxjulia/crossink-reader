@@ -457,16 +457,30 @@ void EpubReaderActivity::loop() {
   // Side button long-press: change font size.
   // Always uses Button::Up (increase) and Button::Down (decrease) to keep intuitive
   // top=bigger / bottom=smaller regardless of the Prev/Next side layout setting.
-  if (SETTINGS.sideButtonLongPress == CrossPointSettings::SIDE_LONG_PRESS::SIDE_LONG_FONT_SIZE &&
-      mappedInput.getHeldTime() > skipChapterMs) {
-    if (mappedInput.wasReleased(MappedInputManager::Button::Up)) {
+  if (SETTINGS.sideButtonLongPress == CrossPointSettings::SIDE_LONG_PRESS::SIDE_LONG_FONT_SIZE) {
+    const bool topReleased = mappedInput.wasReleased(MappedInputManager::Button::Up);
+    const bool bottomReleased = mappedInput.wasReleased(MappedInputManager::Button::Down);
+    if (sideButtonLongPressHandled && (topReleased || bottomReleased)) {
+      sideButtonLongPressHandled = false;
+      return;
+    }
+
+    const bool longPressReady = mappedInput.getHeldTime() > skipChapterMs;
+    const bool topLongPressed =
+        longPressReady && (mappedInput.isPressed(MappedInputManager::Button::Up) || topReleased);
+    const bool bottomLongPressed =
+        longPressReady && (mappedInput.isPressed(MappedInputManager::Button::Down) || bottomReleased);
+
+    if (!sideButtonLongPressHandled && topLongPressed) {
+      sideButtonLongPressHandled = !topReleased;
       if (SETTINGS.fontSize < CrossPointSettings::FONT_SIZE_COUNT - 1) {
         SETTINGS.fontSize++;
         reindexCurrentSection();
       }
       return;
     }
-    if (mappedInput.wasReleased(MappedInputManager::Button::Down)) {
+    if (!sideButtonLongPressHandled && bottomLongPressed) {
+      sideButtonLongPressHandled = !bottomReleased;
       if (SETTINGS.fontSize > 0) {
         SETTINGS.fontSize--;
         reindexCurrentSection();
