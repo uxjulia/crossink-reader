@@ -18,8 +18,11 @@ class FileBrowserActionActivity final : public Activity {
   };
 
   FileBrowserActionActivity(GfxRenderer& renderer, MappedInputManager& mappedInput, std::string title,
-                            std::vector<MenuItem> items)
-      : Activity("FileBrowserAction", renderer, mappedInput), title(std::move(title)), items(std::move(items)) {}
+                            std::vector<MenuItem> items, bool ignoreInitialConfirmRelease = false)
+      : Activity("FileBrowserAction", renderer, mappedInput),
+        title(std::move(title)),
+        items(std::move(items)),
+        ignoreConfirmRelease(ignoreInitialConfirmRelease) {}
 
   void onEnter() override;
   void loop() override;
@@ -30,4 +33,5 @@ class FileBrowserActionActivity final : public Activity {
   std::string title;
   std::vector<MenuItem> items;
   int selectedIndex = 0;
+  bool ignoreConfirmRelease = false;
 };

@@ -220,7 +220,7 @@ bool FileBrowserActivity::isPinnedSleepFavorite(const std::string& fullPath) con
   return APP_STATE.favoriteSleepImagePath == fullPath;
 }
 
-void FileBrowserActivity::showFileActionMenu(const std::string& entry) {
+void FileBrowserActivity::showFileActionMenu(const std::string& entry, bool ignoreInitialConfirmRelease) {
   const std::string fullPath = buildFullPath(basepath, entry);
   std::vector<FileBrowserActionActivity::MenuItem> items;
   items.reserve(2);
@@ -234,8 +234,10 @@ void FileBrowserActivity::showFileActionMenu(const std::string& entry) {
   }
 
   startActivityForResult(
-      std::make_unique<FileBrowserActionActivity>(renderer, mappedInput, getFileName(entry), std::move(items)),
+      std::make_unique<FileBrowserActionActivity>(renderer, mappedInput, getFileName(entry), std::move(items),
+                                                  ignoreInitialConfirmRelease),
       [this, fullPath, entry](const ActivityResult& result) {
+        longPressConfirmHandled = false;
         if (result.isCancelled) {
           return;
         }
@@ -286,7 +288,22 @@ void FileBrowserActivity::loop() {
   const int pathReserved = renderer.getLineHeight(SMALL_FONT_ID) + UITheme::getInstance().getMetrics().verticalSpacing;
   const int pageItems = UITheme::getNumberOfItemsPerPage(renderer, true, false, true, false, pathReserved);
 
+  if (!files.empty()) {
+    const std::string& entry = files[selectorIndex];
+    const bool isDirectory = (entry.back() == '/');
+    if (!longPressConfirmHandled && !isDirectory && mappedInput.isPressed(MappedInputManager::Button::Confirm) &&
+        mappedInput.getHeldTime() >= GO_HOME_MS) {
+      longPressConfirmHandled = true;
+      showFileActionMenu(entry, true);
+      return;
+    }
+  }
+
   if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
+    if (longPressConfirmHandled) {
+      longPressConfirmHandled = false;
+      return;
+    }
     if (files.empty()) return;
 
     const std::string& entry = files[selectorIndex];

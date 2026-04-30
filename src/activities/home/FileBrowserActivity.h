@@ -16,13 +16,14 @@ class FileBrowserActivity final : public Activity {
   void pinSleepFavorite(const std::string& fullPath);
   void unpinSleepFavorite();
   bool isPinnedSleepFavorite(const std::string& fullPath) const;
-  void showFileActionMenu(const std::string& entry);
+  void showFileActionMenu(const std::string& entry, bool ignoreInitialConfirmRelease = false);
 
   ButtonNavigator buttonNavigator;
 
   size_t selectorIndex = 0;
 
   bool lockLongPressBack = false;
+  bool longPressConfirmHandled = false;
 
   // Files state
   std::string basepath = "/";

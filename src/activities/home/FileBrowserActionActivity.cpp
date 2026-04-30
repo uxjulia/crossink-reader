@@ -12,6 +12,16 @@ void FileBrowserActionActivity::onEnter() {
 }
 
 void FileBrowserActionActivity::loop() {
+  if (ignoreConfirmRelease) {
+    if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
+      ignoreConfirmRelease = false;
+      return;
+    }
+    if (!mappedInput.isPressed(MappedInputManager::Button::Confirm)) {
+      ignoreConfirmRelease = false;
+    }
+  }
+
   if (mappedInput.wasReleased(MappedInputManager::Button::Back)) {
     ActivityResult result;
     result.isCancelled = true;
