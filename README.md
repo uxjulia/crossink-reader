@@ -116,38 +116,46 @@ Have you ever opened a book and the paragraph indents just were not rendering, l
 
 This works when **Reader Paragraph Alignment** is set to **Left**, **Justify**, or **Book's Style**. You can toggle it from **Reader settings**.
 
-### New settings in Controls
+## Custom button actions
 
-#### Side Buttons Long Press
+The Controls menu in Settings has been updated to the following
 
-Previously, **Long-press Chapter Skip** applied to both the front and side buttons. I split this out so the side buttons can do their own thing, which opens up a lot more flexibility.
+<u>**Power Button**</u>
+Short-press Action - **New Options Added**
+Long-press Action - **New**
 
-You can now choose what the side buttons do when you long-press them:
+<u>**Front Buttons**</u>
+Remap Front Buttons
+Remap Front Buttons (reader)
+Long-press Menu Action - **New**
 
-- **Change Font Size**: Up increases the font size, Down decreases it
-- **Chapter Skip**: Previous behavior
-- **Ignore**: Do nothing
+<u>**Side Buttons**</u>
+Layout
+Long-press Chapter Skip
+Long-Press Action - **New**
 
-#### Short Power Button Click
+---
 
-There is now a new short power button action:
+**Side Button Long Press Action** - Use the side buttons to change your font size. Previously, the "Long-press Chapter Skip" applied to both the front and side buttons. I've split this out so now you can change your font size when you long-press them. Press and hold for about 2 seconds: Up to increase font size, Down to decrease font size. Default = Chapter Skip
 
-- **Change Font**: Cycles through the fonts one by one
+**Short-press Power Button Action** - Default = Ignore
+**Long-press Power Button Action** - Default = Sleep
+**Long Press Menu Button Action** (This is the Menu/Confirm button when you are in the reader): Default = Ignore
 
-#### Long Press Menu Action
-
-While you are in the reader, you can now set the Confirm/Menu button to do one of these actions when long-pressed:
-
-- **Change Font**: Cycles through the fonts one by one
-- **Guide Dots**: Turns Guide Dots on or off
-- **Bionic Reading**: Turns Bionic Reading on or off
-- **Toggle Bookmark**: Adds or removes a bookmark from the current page
-- **Refresh Screen**: Forces a screen refresh
-- **Sync Progress**: Syncs KOReader progress
-- **Mark as Finished**: Marks the current book as finished/unfinished
-- **Reading Stats**: Opens the reading stats screen
-- **Take Screenshot**: Takes a screenshot
-- **Cycle Page Turn**: Cycles through the auto page turn intervals: **Off → 5s → 10s → 15s → 20s → 30s → 45s → 60s → Off**
+Map the **Power** or **Menu** button short/long-press action to one of the following options:
+- Ignore
+- Sleep
+- Page Turn
+- Refresh Screen
+- Change Font (cycles through the fonts one by one)
+- Guide Dots (turns guide dots on/off)
+- Bionic Reading (turns bionic reading on/off)
+- Toggle Bookmark (adds or removes a bookmark from the current page)
+- Sync Progress (syncs KoReader progress)
+- Mark as Finished (marks book as finished)
+- Reading Stats (displays reading stats)
+- Take Screenshot (takes a screenshot)
+- Auto Page Turn (cycles through the page turn intervals: **Off → 5s → 10s → 15s → 20s → 30s → 45s → 60s → Off →**)
 
 ### Reading stats
 
