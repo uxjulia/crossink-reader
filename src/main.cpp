@@ -8,6 +8,7 @@
 #include <HalPowerManager.h>
 #include <HalStorage.h>
 #include <HalSystem.h>
+#include <HalTiltSensor.h>
 #include <I18n.h>
 #include <Logging.h>
 #include <SPI.h>
@@ -320,6 +321,7 @@ void enterDeepSleep() {
 
   activityManager.goToSleep();
 
+  halTiltSensor.deepSleep();
   display.deepSleep();
   LOG_DBG("MAIN", "Entering deep sleep");
 
@@ -404,6 +406,7 @@ void setup() {
   HalSystem::begin();
   gpio.begin();
   powerManager.begin();
+  halTiltSensor.begin();
 
 #ifdef ENABLE_SERIAL_LOG
   if (gpio.isUsbConnected()) {
@@ -429,7 +432,7 @@ void setup() {
   HalSystem::checkPanic();
 
   SETTINGS.loadFromFile();
-  I18N.loadSettings();
+  I18N.setLanguage(static_cast<Language>(SETTINGS.language));
   KOREADER_STORE.loadFromFile();
   OPDS_STORE.loadFromFile();
   UITheme::getInstance().reload();
@@ -491,6 +494,7 @@ void loop() {
   static unsigned long lastMemPrint = 0;
 
   gpio.update();
+  halTiltSensor.update(SETTINGS.tiltPageTurn, SETTINGS.orientation, activityManager.isReaderActivity());
 
   renderer.setFadingFix(SETTINGS.fadingFix);
 
@@ -519,7 +523,8 @@ void loop() {
 
   // Check for any user activity (button press or release) or active background work
   static unsigned long lastActivityTime = millis();
-  if (gpio.wasAnyPressed() || gpio.wasAnyReleased() || activityManager.preventAutoSleep()) {
+  if (gpio.wasAnyPressed() || gpio.wasAnyReleased() || halTiltSensor.hadActivity() ||
+      activityManager.preventAutoSleep()) {
     lastActivityTime = millis();         // Reset inactivity timer
     powerManager.setPowerSaving(false);  // Restore normal CPU frequency on user activity
   }

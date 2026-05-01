@@ -497,10 +497,11 @@ void EpubReaderActivity::loop() {
     return;
   }
 
-  auto [prevTriggered, nextTriggered, fromSideBtn] = ReaderUtils::detectPageTurn(mappedInput);
+  auto [prevTriggered, nextTriggered, fromSideBtn, fromTilt] = ReaderUtils::detectPageTurn(mappedInput);
   if (SETTINGS.longPwrBtn == CrossPointSettings::SHORT_PWRBTN::PAGE_TURN && consumeLongPowerButtonHold()) {
     nextTriggered = true;
     fromSideBtn = false;
+    fromTilt = false;
   }
   if (!prevTriggered && !nextTriggered) {
     return;
@@ -520,7 +521,7 @@ void EpubReaderActivity::loop() {
   }
 
   const bool skipChapter =
-      mappedInput.getHeldTime() > skipChapterMs &&
+      !fromTilt && mappedInput.getHeldTime() > skipChapterMs &&
       (fromSideBtn ? SETTINGS.sideButtonLongPress == CrossPointSettings::SIDE_LONG_PRESS::SIDE_LONG_CHAPTER_SKIP
                    : static_cast<bool>(SETTINGS.longPressChapterSkip));
 
@@ -1705,6 +1706,27 @@ bool EpubReaderActivity::drawCurrentPageToBuffer(const std::string& filePath, Gf
 
   renderer.clearScreen();
   page->render(renderer, SETTINGS.getReaderFontId(), marginLeft, marginTop);
-  // No displayBuffer call — caller (SleepActivity) handles that after compositing the overlay
+  // No displayBuffer call; caller (SleepActivity) handles that after compositing the overlay.
   return true;
+}
+
+ScreenshotInfo EpubReaderActivity::getScreenshotInfo() const {
+  ScreenshotInfo info;
+  info.readerType = ScreenshotInfo::ReaderType::Epub;
+  if (epub) {
+    snprintf(info.title, sizeof(info.title), "%s", epub->getTitle().c_str());
+    info.spineIndex = currentSpineIndex;
+  }
+  if (section) {
+    info.currentPage = section->currentPage + 1;
+    info.totalPages = section->pageCount;
+    if (epub && epub->getBookSize() > 0 && section->pageCount > 0) {
+      const float chapterProgress = static_cast<float>(section->currentPage) / static_cast<float>(section->pageCount);
+      int pct = static_cast<int>(epub->calculateProgress(currentSpineIndex, chapterProgress) * 100.0f + 0.5f);
+      if (pct < 0) pct = 0;
+      if (pct > 100) pct = 100;
+      info.progressPercent = pct;
+    }
+  }
+  return info;
 }

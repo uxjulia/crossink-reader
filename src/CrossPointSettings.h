@@ -171,6 +171,8 @@ class CrossPointSettings {
   // Image rendering in EPUB reader
   enum IMAGE_RENDERING { IMAGES_DISPLAY = 0, IMAGES_PLACEHOLDER = 1, IMAGES_SUPPRESS = 2, IMAGE_RENDERING_COUNT };
 
+  enum TILT_PAGE_TURN { TILT_OFF = 0, TILT_NORMAL = 1, TILT_INVERTED = 2, TILT_PAGE_TURN_COUNT };
+
   // Long-press Confirm (menu button) quick action in reader
   enum LONG_PRESS_MENU_ACTION {
     LONG_MENU_OFF = 0,
@@ -276,6 +278,10 @@ class CrossPointSettings {
   uint8_t imageRendering = IMAGES_DISPLAY;
   // Long-press Confirm (menu button) quick action in reader (0 = off)
   uint8_t longPressMenuAction = LONG_MENU_OFF;
+  // Tilt-based page turning (X3 only — requires QMI8658 IMU)
+  uint8_t tiltPageTurn = TILT_OFF;
+  // Language setting (Language enum index, default 0 = EN)
+  uint8_t language = 0;
 
   ~CrossPointSettings() = default;
 
@@ -307,6 +313,7 @@ class CrossPointSettings {
 
  private:
   bool loadFromBinaryFile();
+  bool migrateLanguageBinaryFile();
 
  public:
   float getReaderLineCompression() const;
