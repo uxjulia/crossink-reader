@@ -21,7 +21,7 @@ My goal with this fork was to maintain the core Crosspoint firmware while integr
 
 - New reader fonts: ChareInk, Lexend Deca, and Bitter
 - Unicode emoji and miscellaneous symbols support
-- Adjusted font sizes: Tiny (10pt), Small (12pt), Medium (14pt), Large (16pt), Extra Large (18pt). See [Font Sizes](#font-sizes) for more details.
+- Adjusted font sizes: Teensy (8pt), Tiny (10pt), Small (12pt), Medium (14pt), Large (16pt), Extra Large (18pt). See [Font Sizes](#font-sizes) for more details.
 - Added ~~strikethrough~~ support
 - Made <u>underlines</u> thicker for better visibility
 - Added ability to add bookmarks
@@ -66,7 +66,8 @@ There are 3 available build variants to choose from due to build size constraint
 > No Extra Large font size. My preferred build.
 
 - Emoji & Misc. Symbols Support
-- 4 Font sizes:
+- 5 Font sizes:
+  - Teensy (8pt)
   - Tiny (10pt)
   - Small (12pt)
   - Medium (14pt)
@@ -74,7 +75,7 @@ There are 3 available build variants to choose from due to build size constraint
 
 **xlarge**
 
-> Tiny and Small font sizes had to be removed to reduce build size and still support emoji/symbols.
+> Teensy, Tiny, and Small font sizes had to be removed to reduce build size and still support emoji/symbols.
 
 - Emoji & Misc. Symbols Support
 - 3 Font sizes:
@@ -87,7 +88,8 @@ There are 3 available build variants to choose from due to build size constraint
 > All font sizes available, but no emoji/symbols support.
 
 - **No** Emoji & Misc. Symbols Support
-- 5 Font sizes:
+- 6 Font sizes:
+  - Teensy (8pt)
   - Tiny (10pt)
   - Small (12pt)
   - Medium (14pt)

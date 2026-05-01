@@ -1,14 +1,22 @@
 #pragma once
 
-// Reading fonts — two variants controlled by OMIT_EMOJI_FONTS.
+// Reading fonts - two variants controlled by OMIT_EMOJI_FONTS.
 // The no-emoji variants live in noemoji/ with the same filenames and variable names.
 // Generate both sets with lib/EpdFont/scripts/convert-builtin-fonts.sh.
 //
 // Per-size guards:
-//   OMIT_TINY_FONT   — excludes 10px (Tiny) reading fonts; used by env:xlarge
-//   OMIT_SMALL_FONT  — excludes 12px (Small) reading fonts
-//   OMIT_XLARGE_FONT — excludes 18px (Extra Large) reading fonts; used by env:tiny
+//   OMIT_TEENSY_FONT - excludes 8px (Teensy) reading fonts; used by env:xlarge
+//   OMIT_TINY_FONT   - excludes 10px (Tiny) reading fonts; used by env:xlarge
+//   OMIT_SMALL_FONT  - excludes 12px (Small) reading fonts
+//   OMIT_XLARGE_FONT - excludes 18px (Extra Large) reading fonts; used by env:tiny
+//   OMIT_INTER_READER_FONT - excludes experimental 8px Inter reading font; used by env:no_emoji
 #ifndef OMIT_EMOJI_FONTS
+#ifndef OMIT_TEENSY_FONT
+#include <builtinFonts/bitter_8_bold.h>
+#include <builtinFonts/bitter_8_bolditalic.h>
+#include <builtinFonts/bitter_8_italic.h>
+#include <builtinFonts/bitter_8_regular.h>
+#endif
 #ifndef OMIT_TINY_FONT
 #include <builtinFonts/bitter_10_bold.h>
 #include <builtinFonts/bitter_10_bolditalic.h>
@@ -35,6 +43,12 @@
 #include <builtinFonts/bitter_18_italic.h>
 #include <builtinFonts/bitter_18_regular.h>
 #endif
+#ifndef OMIT_TEENSY_FONT
+#include <builtinFonts/charein_8_bold.h>
+#include <builtinFonts/charein_8_bolditalic.h>
+#include <builtinFonts/charein_8_italic.h>
+#include <builtinFonts/charein_8_regular.h>
+#endif
 #ifndef OMIT_TINY_FONT
 #include <builtinFonts/charein_10_bold.h>
 #include <builtinFonts/charein_10_bolditalic.h>
@@ -60,6 +74,18 @@
 #include <builtinFonts/charein_18_bolditalic.h>
 #include <builtinFonts/charein_18_italic.h>
 #include <builtinFonts/charein_18_regular.h>
+#endif
+#ifndef OMIT_TEENSY_FONT
+#include <builtinFonts/lexenddeca_8_bold.h>
+#include <builtinFonts/lexenddeca_8_bolditalic.h>
+#include <builtinFonts/lexenddeca_8_italic.h>
+#include <builtinFonts/lexenddeca_8_regular.h>
+#ifndef OMIT_INTER_READER_FONT
+#include <builtinFonts/interreader_8_bold.h>
+#include <builtinFonts/interreader_8_bolditalic.h>
+#include <builtinFonts/interreader_8_italic.h>
+#include <builtinFonts/interreader_8_regular.h>
+#endif
 #endif
 #ifndef OMIT_TINY_FONT
 #include <builtinFonts/lexenddeca_10_bold.h>
@@ -89,6 +115,12 @@
 #endif
 
 #else
+#ifndef OMIT_TEENSY_FONT
+#include <builtinFonts/noemoji/bitter_8_bold.h>
+#include <builtinFonts/noemoji/bitter_8_bolditalic.h>
+#include <builtinFonts/noemoji/bitter_8_italic.h>
+#include <builtinFonts/noemoji/bitter_8_regular.h>
+#endif
 #ifndef OMIT_TINY_FONT
 #include <builtinFonts/noemoji/bitter_10_bold.h>
 #include <builtinFonts/noemoji/bitter_10_bolditalic.h>
@@ -115,6 +147,12 @@
 #include <builtinFonts/noemoji/bitter_18_italic.h>
 #include <builtinFonts/noemoji/bitter_18_regular.h>
 #endif
+#ifndef OMIT_TEENSY_FONT
+#include <builtinFonts/noemoji/charein_8_bold.h>
+#include <builtinFonts/noemoji/charein_8_bolditalic.h>
+#include <builtinFonts/noemoji/charein_8_italic.h>
+#include <builtinFonts/noemoji/charein_8_regular.h>
+#endif
 #ifndef OMIT_TINY_FONT
 #include <builtinFonts/noemoji/charein_10_bold.h>
 #include <builtinFonts/noemoji/charein_10_bolditalic.h>
@@ -140,6 +178,18 @@
 #include <builtinFonts/noemoji/charein_18_bolditalic.h>
 #include <builtinFonts/noemoji/charein_18_italic.h>
 #include <builtinFonts/noemoji/charein_18_regular.h>
+#endif
+#ifndef OMIT_TEENSY_FONT
+#include <builtinFonts/noemoji/lexenddeca_8_bold.h>
+#include <builtinFonts/noemoji/lexenddeca_8_bolditalic.h>
+#include <builtinFonts/noemoji/lexenddeca_8_italic.h>
+#include <builtinFonts/noemoji/lexenddeca_8_regular.h>
+#ifndef OMIT_INTER_READER_FONT
+#include <builtinFonts/noemoji/interreader_8_bold.h>
+#include <builtinFonts/noemoji/interreader_8_bolditalic.h>
+#include <builtinFonts/noemoji/interreader_8_italic.h>
+#include <builtinFonts/noemoji/interreader_8_regular.h>
+#endif
 #endif
 #ifndef OMIT_TINY_FONT
 #include <builtinFonts/noemoji/lexenddeca_10_bold.h>

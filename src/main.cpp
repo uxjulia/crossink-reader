@@ -43,6 +43,13 @@ EpdFont lexenddeca14ItalicFont(&lexenddeca_14_italic);
 EpdFont lexenddeca14BoldItalicFont(&lexenddeca_14_bolditalic);
 EpdFontFamily lexenddeca14FontFamily(&lexenddeca14RegularFont, &lexenddeca14BoldFont, &lexenddeca14ItalicFont,
                                      &lexenddeca14BoldItalicFont);
+#ifndef OMIT_TEENSY_FONT
+EpdFont charein8RegularFont(&charein_8_regular);
+EpdFont charein8BoldFont(&charein_8_bold);
+EpdFont charein8ItalicFont(&charein_8_italic);
+EpdFont charein8BoldItalicFont(&charein_8_bolditalic);
+EpdFontFamily charein8FontFamily(&charein8RegularFont, &charein8BoldFont, &charein8ItalicFont, &charein8BoldItalicFont);
+#endif
 #ifndef OMIT_TINY_FONT
 EpdFont charein10RegularFont(&charein_10_regular);
 EpdFont charein10BoldFont(&charein_10_bold);
@@ -79,6 +86,22 @@ EpdFont charein18BoldItalicFont(&charein_18_bolditalic);
 EpdFontFamily charein18FontFamily(&charein18RegularFont, &charein18BoldFont, &charein18ItalicFont,
                                   &charein18BoldItalicFont);
 #endif
+#ifndef OMIT_TEENSY_FONT
+EpdFont lexenddeca8RegularFont(&lexenddeca_8_regular);
+EpdFont lexenddeca8BoldFont(&lexenddeca_8_bold);
+EpdFont lexenddeca8ItalicFont(&lexenddeca_8_italic);
+EpdFont lexenddeca8BoldItalicFont(&lexenddeca_8_bolditalic);
+EpdFontFamily lexenddeca8FontFamily(&lexenddeca8RegularFont, &lexenddeca8BoldFont, &lexenddeca8ItalicFont,
+                                    &lexenddeca8BoldItalicFont);
+#ifndef OMIT_INTER_READER_FONT
+EpdFont interReader8RegularFont(&interreader_8_regular);
+EpdFont interReader8BoldFont(&interreader_8_bold);
+EpdFont interReader8ItalicFont(&interreader_8_italic);
+EpdFont interReader8BoldItalicFont(&interreader_8_bolditalic);
+EpdFontFamily interReader8FontFamily(&interReader8RegularFont, &interReader8BoldFont, &interReader8ItalicFont,
+                                     &interReader8BoldItalicFont);
+#endif
+#endif
 #ifndef OMIT_TINY_FONT
 EpdFont lexenddeca10RegularFont(&lexenddeca_10_regular);
 EpdFont lexenddeca10BoldFont(&lexenddeca_10_bold);
@@ -110,6 +133,13 @@ EpdFontFamily lexenddeca18FontFamily(&lexenddeca18RegularFont, &lexenddeca18Bold
                                      &lexenddeca18BoldItalicFont);
 #endif
 
+#ifndef OMIT_TEENSY_FONT
+EpdFont bitter8RegularFont(&bitter_8_regular);
+EpdFont bitter8BoldFont(&bitter_8_bold);
+EpdFont bitter8ItalicFont(&bitter_8_italic);
+EpdFont bitter8BoldItalicFont(&bitter_8_bolditalic);
+EpdFontFamily bitter8FontFamily(&bitter8RegularFont, &bitter8BoldFont, &bitter8ItalicFont, &bitter8BoldItalicFont);
+#endif
 #ifndef OMIT_TINY_FONT
 EpdFont bitter10RegularFont(&bitter_10_regular);
 EpdFont bitter10BoldFont(&bitter_10_bold);
@@ -294,6 +324,9 @@ void setupDisplayAndFonts() {
   fontCacheManager.setFontDecompressor(&fontDecompressor);
   renderer.setFontCacheManager(&fontCacheManager);
 
+#ifndef OMIT_TEENSY_FONT
+  renderer.insertFont(CHAREINK_8_FONT_ID, charein8FontFamily);
+#endif
 #ifndef OMIT_TINY_FONT
   renderer.insertFont(CHAREINK_10_FONT_ID, charein10FontFamily);
 #endif
@@ -306,6 +339,9 @@ void setupDisplayAndFonts() {
   renderer.insertFont(CHAREINK_18_FONT_ID, charein18FontFamily);
 #endif
 
+#ifndef OMIT_TEENSY_FONT
+  renderer.insertFont(LEXENDDECA_8_FONT_ID, lexenddeca8FontFamily);
+#endif
 #ifndef OMIT_TINY_FONT
   renderer.insertFont(LEXENDDECA_10_FONT_ID, lexenddeca10FontFamily);
 #endif
@@ -318,6 +354,9 @@ void setupDisplayAndFonts() {
   renderer.insertFont(LEXENDDECA_18_FONT_ID, lexenddeca18FontFamily);
 #endif
 
+#ifndef OMIT_TEENSY_FONT
+  renderer.insertFont(BITTER_8_FONT_ID, bitter8FontFamily);
+#endif
 #ifndef OMIT_TINY_FONT
   renderer.insertFont(BITTER_10_FONT_ID, bitter10FontFamily);
 #endif
@@ -328,6 +367,9 @@ void setupDisplayAndFonts() {
   renderer.insertFont(BITTER_16_FONT_ID, bitter16FontFamily);
 #ifndef OMIT_XLARGE_FONT
   renderer.insertFont(BITTER_18_FONT_ID, bitter18FontFamily);
+#endif
+#if !defined(OMIT_TEENSY_FONT) && !defined(OMIT_INTER_READER_FONT)
+  renderer.insertFont(INTER_8_FONT_ID, interReader8FontFamily);
 #endif
 
   renderer.insertFont(UI_10_FONT_ID, ui10FontFamily);

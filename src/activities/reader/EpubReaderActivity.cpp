@@ -473,16 +473,14 @@ void EpubReaderActivity::loop() {
 
     if (!sideButtonLongPressHandled && topLongPressed) {
       sideButtonLongPressHandled = !topReleased;
-      if (SETTINGS.fontSize < CrossPointSettings::FONT_SIZE_COUNT - 1) {
-        SETTINGS.fontSize++;
+      if (SETTINGS.changeReaderFontSize(/*larger=*/true)) {
         reindexCurrentSection();
       }
       return;
     }
     if (!sideButtonLongPressHandled && bottomLongPressed) {
       sideButtonLongPressHandled = !bottomReleased;
-      if (SETTINGS.fontSize > 0) {
-        SETTINGS.fontSize--;
+      if (SETTINGS.changeReaderFontSize(/*larger=*/false)) {
         reindexCurrentSection();
       }
       return;
@@ -843,8 +841,9 @@ void EpubReaderActivity::executeReaderQuickAction(CrossPointSettings::LONG_PRESS
       enterDeepSleep();
       break;
     case CrossPointSettings::LONG_MENU_CHANGE_FONT:
-      SETTINGS.fontFamily = (SETTINGS.fontFamily + 1) % CrossPointSettings::FONT_FAMILY_COUNT;
-      reindexCurrentSection();
+      if (SETTINGS.changeReaderFontFamily()) {
+        reindexCurrentSection();
+      }
       break;
     case CrossPointSettings::LONG_MENU_TOGGLE_GUIDE_DOTS:
       SETTINGS.guideReadingEnabled = !SETTINGS.guideReadingEnabled;
