@@ -25,6 +25,7 @@ class CrossPointSettings {
     BLANK = 4,
     COVER_CUSTOM = 5,
     OVERLAY = 6,
+    READING_STATS_SLEEP = 7,
     SLEEP_SCREEN_MODE_COUNT
   };
   enum SLEEP_SCREEN_COVER_MODE { FIT = 0, CROP = 1, SLEEP_SCREEN_COVER_MODE_COUNT };
@@ -156,7 +157,7 @@ class CrossPointSettings {
   enum HIDE_BATTERY_PERCENTAGE { HIDE_NEVER = 0, HIDE_READER = 1, HIDE_ALWAYS = 2, HIDE_BATTERY_PERCENTAGE_COUNT };
 
   // UI Theme
-  enum UI_THEME { CLASSIC = 0, LYRA = 1, LYRA_3_COVERS = 2 };
+  enum UI_THEME { CLASSIC = 0, LYRA = 1, LYRA_3_COVERS = 2, ROUNDEDRAFF = 3 };
 
   // Image rendering in EPUB reader
   enum IMAGE_RENDERING { IMAGES_DISPLAY = 0, IMAGES_PLACEHOLDER = 1, IMAGES_SUPPRESS = 2, IMAGE_RENDERING_COUNT };
@@ -178,6 +179,12 @@ class CrossPointSettings {
     LONG_PRESS_MENU_ACTION_COUNT
   };
 
+  // Clipping storage mode
+  enum CLIPPING_STORAGE : uint8_t { SINGLE_FILE = 0, PER_BOOK = 1, CLIPPING_STORAGE_COUNT };
+  // Clip selector navigation scheme
+  enum CLIP_NAV_MODE : uint8_t { LINE_AWARE = 0, WORD_BY_WORD = 1, CLIP_NAV_MODE_COUNT };
+  // Annotation underline visibility
+  enum ANNOTATION_VISIBILITY : uint8_t { ANNOT_VISIBLE = 0, ANNOT_HIDDEN = 1, ANNOTATION_VISIBILITY_COUNT };
   // Sleep screen settings
   uint8_t sleepScreen = DARK;
   // Sleep screen cover mode settings

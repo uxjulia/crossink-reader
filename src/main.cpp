@@ -157,6 +157,10 @@ EpdFontFamily ui12FontFamily(&ui12RegularFont, &ui12BoldFont);
 unsigned long t1 = 0;
 unsigned long t2 = 0;
 
+// Set when the screenshot combo (Power + Volume Down) fires, so the subsequent
+// power button release does not also trigger a short-press action (e.g. sleep).
+static bool screenshotComboHandled = false;
+
 // Verify power button press duration on wake-up from deep sleep
 // Pre-condition: isWakeupByPowerButton() == true
 void verifyPowerButtonDuration() {
@@ -209,14 +213,42 @@ void waitForPowerRelease() {
   }
 }
 
-CrossPointSettings::SHORT_PWRBTN getReleasedPowerButtonAction() {
-  if (!mappedInputManager.wasReleased(MappedInputManager::Button::Power)) {
+bool isGlobalPowerButtonAction(const CrossPointSettings::SHORT_PWRBTN action) {
+  return action == CrossPointSettings::SHORT_PWRBTN::SLEEP || action == CrossPointSettings::SHORT_PWRBTN::FORCE_REFRESH;
+}
+
+CrossPointSettings::SHORT_PWRBTN getPowerButtonAction() {
+  static bool longPowerButtonHandled = false;
+
+  if (mappedInputManager.wasReleased(MappedInputManager::Button::Power)) {
+    if (longPowerButtonHandled) {
+      longPowerButtonHandled = false;
+      screenshotComboHandled = false;
+      return CrossPointSettings::SHORT_PWRBTN::IGNORE;
+    }
+
+    if (screenshotComboHandled) {
+      screenshotComboHandled = false;
+      return CrossPointSettings::SHORT_PWRBTN::IGNORE;
+    }
+
+    return mappedInputManager.getHeldTime() < SETTINGS.getPowerButtonLongPressDuration()
+               ? static_cast<CrossPointSettings::SHORT_PWRBTN>(SETTINGS.shortPwrBtn)
+               : static_cast<CrossPointSettings::SHORT_PWRBTN>(SETTINGS.longPwrBtn);
+  }
+
+  if (longPowerButtonHandled || !mappedInputManager.isPressed(MappedInputManager::Button::Power) ||
+      mappedInputManager.getHeldTime() < SETTINGS.getPowerButtonLongPressDuration()) {
     return CrossPointSettings::SHORT_PWRBTN::IGNORE;
   }
 
-  return mappedInputManager.getHeldTime() < SETTINGS.getPowerButtonLongPressDuration()
-             ? static_cast<CrossPointSettings::SHORT_PWRBTN>(SETTINGS.shortPwrBtn)
-             : static_cast<CrossPointSettings::SHORT_PWRBTN>(SETTINGS.longPwrBtn);
+  const auto action = static_cast<CrossPointSettings::SHORT_PWRBTN>(SETTINGS.longPwrBtn);
+  if (!isGlobalPowerButtonAction(action)) {
+    return CrossPointSettings::SHORT_PWRBTN::IGNORE;
+  }
+
+  longPowerButtonHandled = true;
+  return action;
 }
 
 bool handleGlobalPowerButtonAction(const CrossPointSettings::SHORT_PWRBTN action) {
@@ -434,6 +466,7 @@ void loop() {
   if (gpio.isPressed(HalGPIO::BTN_POWER) && gpio.isPressed(HalGPIO::BTN_DOWN)) {
     if (screenshotButtonsReleased) {
       screenshotButtonsReleased = false;
+      screenshotComboHandled = true;
       {
         RenderLock lock;
         if (renderer.getDisplayState() == GfxRenderer::DisplayState::FactoryLut) {
@@ -466,7 +499,7 @@ void loop() {
     return;
   }
 
-  if (handleGlobalPowerButtonAction(getReleasedPowerButtonAction())) {
+  if (handleGlobalPowerButtonAction(getPowerButtonAction())) {
     lastActivityTime = millis();
     return;
   }

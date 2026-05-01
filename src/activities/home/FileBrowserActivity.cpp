@@ -11,6 +11,8 @@
 #include "../util/ConfirmationActivity.h"
 #include "BookmarkStore.h"
 #include "CrossPointSettings.h"
+#include "CrossPointState.h"
+#include "FileBrowserActionActivity.h"
 #include "MappedInputManager.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
@@ -20,8 +22,22 @@ constexpr unsigned long GO_HOME_MS = 1000;
 
 bool isSupportedFile(std::string_view name) {
   return FsHelpers::hasEpubExtension(name) || FsHelpers::hasXtcExtension(name) || FsHelpers::hasTxtExtension(name) ||
-         FsHelpers::hasMarkdownExtension(name) || FsHelpers::hasBmpExtension(name) || FsHelpers::hasPxcExtension(name);
+         FsHelpers::hasMarkdownExtension(name) || FsHelpers::hasBmpExtension(name) ||
+         FsHelpers::hasPxcExtension(name) || FsHelpers::hasPngExtension(name);
 }
+
+bool isSleepFolderPath(const std::string& path) { return path == "/sleep" || path == "/.sleep"; }
+
+bool isSleepImageFile(const std::string& path) {
+  return FsHelpers::hasBmpExtension(path) || FsHelpers::hasPngExtension(path) || FsHelpers::hasPxcExtension(path);
+}
+
+std::string buildFullPath(std::string basepath, const std::string& entry) {
+  if (basepath.back() != '/') basepath += "/";
+  return basepath + entry;
+}
+
+std::string getFileName(std::string filename);
 }  // namespace
 
 void sortFileList(std::vector<std::string>& strs) {
@@ -148,6 +164,113 @@ void FileBrowserActivity::clearFileMetadata(const std::string& fullPath) {
   LOG_DBG("FileBrowser", "Cleared metadata for: %s", fullPath.c_str());
 }
 
+void FileBrowserActivity::promptDeleteFile(const std::string& fullPath, const std::string& entry) {
+  auto handler = [this, fullPath](const ActivityResult& res) {
+    if (res.isCancelled) {
+      LOG_DBG("FileBrowser", "Delete cancelled by user");
+      return;
+    }
+
+    LOG_DBG("FileBrowser", "Attempting to delete: %s", fullPath.c_str());
+    clearFileMetadata(fullPath);
+    if (!Storage.remove(fullPath.c_str())) {
+      LOG_ERR("FileBrowser", "Failed to delete file: %s", fullPath.c_str());
+      return;
+    }
+
+    LOG_DBG("FileBrowser", "Deleted successfully");
+    if (isPinnedSleepFavorite(fullPath)) {
+      unpinSleepFavorite();
+    }
+
+    loadFiles();
+    if (files.empty()) {
+      selectorIndex = 0;
+    } else if (selectorIndex >= files.size()) {
+      selectorIndex = files.size() - 1;
+    }
+    requestUpdate(true);
+  };
+
+  const std::string heading = tr(STR_DELETE) + std::string("? ");
+  startActivityForResult(std::make_unique<ConfirmationActivity>(renderer, mappedInput, heading, entry), handler);
+}
+
+void FileBrowserActivity::pinSleepFavorite(const std::string& fullPath) {
+  APP_STATE.favoriteSleepImagePath = fullPath;
+  if (!APP_STATE.saveToFile()) {
+    LOG_ERR("FileBrowser", "Failed to save favorite sleep image path: %s", fullPath.c_str());
+    return;
+  }
+  LOG_INF("FileBrowser", "Pinned favorite sleep image: %s", fullPath.c_str());
+  requestUpdate();
+}
+
+void FileBrowserActivity::unpinSleepFavorite() {
+  if (APP_STATE.favoriteSleepImagePath.empty()) {
+    return;
+  }
+
+  APP_STATE.favoriteSleepImagePath.clear();
+  if (!APP_STATE.saveToFile()) {
+    LOG_ERR("FileBrowser", "Failed to clear favorite sleep image path");
+    return;
+  }
+  LOG_INF("FileBrowser", "Cleared favorite sleep image");
+  requestUpdate();
+}
+
+bool FileBrowserActivity::isPinnedSleepFavorite(const std::string& fullPath) const {
+  return APP_STATE.favoriteSleepImagePath == fullPath;
+}
+
+void FileBrowserActivity::showFileActionMenu(const std::string& entry, bool ignoreInitialConfirmRelease) {
+  const std::string fullPath = buildFullPath(basepath, entry);
+  std::vector<FileBrowserActionActivity::MenuItem> items;
+  items.reserve(2);
+  items.push_back({FileBrowserAction::Delete, StrId::STR_DELETE});
+
+  const bool canPinFavorite = isSleepFolderPath(basepath) && isSleepImageFile(entry);
+  if (canPinFavorite) {
+    items.push_back(
+        {isPinnedSleepFavorite(fullPath) ? FileBrowserAction::UnpinFavorite : FileBrowserAction::PinFavorite,
+         isPinnedSleepFavorite(fullPath) ? StrId::STR_UNPIN_AS_FAVORITE : StrId::STR_PIN_AS_FAVORITE});
+  }
+
+  startActivityForResult(
+      std::make_unique<FileBrowserActionActivity>(renderer, mappedInput, getFileName(entry), std::move(items),
+                                                  ignoreInitialConfirmRelease),
+      [this, fullPath, entry](const ActivityResult& result) {
+        longPressConfirmHandled = false;
+        if (result.isCancelled) {
+          return;
+        }
+
+        const auto action = static_cast<FileBrowserAction>(std::get<FileBrowserActionResult>(result.data).action);
+        switch (action) {
+          case FileBrowserAction::Delete:
+            promptDeleteFile(fullPath, entry);
+            return;
+          case FileBrowserAction::PinFavorite:
+            if (FsHelpers::hasPngExtension(fullPath)) {
+              startActivityForResult(
+                  std::make_unique<ConfirmationActivity>(renderer, mappedInput, "", tr(STR_PIN_PNG_WARNING)),
+                  [this, fullPath](const ActivityResult& confirmation) {
+                    if (!confirmation.isCancelled) {
+                      pinSleepFavorite(fullPath);
+                    }
+                  });
+            } else {
+              pinSleepFavorite(fullPath);
+            }
+            return;
+          case FileBrowserAction::UnpinFavorite:
+            unpinSleepFavorite();
+            return;
+        }
+      });
+}
+
 void FileBrowserActivity::loop() {
   // Long press BACK (1s+) goes to root folder
   // but Long press BACK (1s+) from ReaderActivity sends us here with the MappedInput already set.
@@ -169,44 +292,29 @@ void FileBrowserActivity::loop() {
   const int pathReserved = renderer.getLineHeight(SMALL_FONT_ID) + UITheme::getInstance().getMetrics().verticalSpacing;
   const int pageItems = UITheme::getNumberOfItemsPerPage(renderer, true, false, true, false, pathReserved);
 
+  if (!files.empty()) {
+    const std::string& entry = files[selectorIndex];
+    const bool isDirectory = (entry.back() == '/');
+    if (!longPressConfirmHandled && !isDirectory && mappedInput.isPressed(MappedInputManager::Button::Confirm) &&
+        mappedInput.getHeldTime() >= GO_HOME_MS) {
+      longPressConfirmHandled = true;
+      showFileActionMenu(entry, true);
+      return;
+    }
+  }
+
   if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
+    if (longPressConfirmHandled) {
+      longPressConfirmHandled = false;
+      return;
+    }
     if (files.empty()) return;
 
     const std::string& entry = files[selectorIndex];
     bool isDirectory = (entry.back() == '/');
 
     if (mappedInput.getHeldTime() >= GO_HOME_MS && !isDirectory) {
-      // --- LONG PRESS ACTION: DELETE FILE ---
-      std::string cleanBasePath = basepath;
-      if (cleanBasePath.back() != '/') cleanBasePath += "/";
-      const std::string fullPath = cleanBasePath + entry;
-
-      auto handler = [this, fullPath](const ActivityResult& res) {
-        if (!res.isCancelled) {
-          LOG_DBG("FileBrowser", "Attempting to delete: %s", fullPath.c_str());
-          clearFileMetadata(fullPath);
-          if (Storage.remove(fullPath.c_str())) {
-            LOG_DBG("FileBrowser", "Deleted successfully");
-            loadFiles();
-            if (files.empty()) {
-              selectorIndex = 0;
-            } else if (selectorIndex >= files.size()) {
-              // Move selection to the new "last" item
-              selectorIndex = files.size() - 1;
-            }
-
-            requestUpdate(true);
-          } else {
-            LOG_ERR("FileBrowser", "Failed to delete file: %s", fullPath.c_str());
-          }
-        } else {
-          LOG_DBG("FileBrowser", "Delete cancelled by user");
-        }
-      };
-
-      std::string heading = tr(STR_DELETE) + std::string("? ");
-
-      startActivityForResult(std::make_unique<ConfirmationActivity>(renderer, mappedInput, heading, entry), handler);
+      showFileActionMenu(entry);
       return;
     } else {
       // --- SHORT PRESS ACTION: OPEN/NAVIGATE ---
@@ -267,6 +375,8 @@ void FileBrowserActivity::loop() {
   });
 }
 
+namespace {
+
 std::string getFileName(std::string filename) {
   if (filename.back() == '/') {
     filename.pop_back();
@@ -286,6 +396,8 @@ std::string getFileExtension(std::string filename) {
   const auto pos = filename.rfind('.');
   return filename.substr(pos);
 }
+
+}  // namespace
 
 void FileBrowserActivity::render(RenderLock&&) {
   renderer.clearScreen();

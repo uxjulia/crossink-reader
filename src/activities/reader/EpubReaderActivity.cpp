@@ -215,17 +215,12 @@ void EpubReaderActivity::onEnter() {
     }
   }
 
-  // Load reading stats, increment session count, and record session start time.
-  // Stats are saved immediately so the session is counted even if the device crashes.
+  // Load reading stats and record session start time.
+  // Session count and reading time are committed on exit once thresholds are met.
   stats = BookReadingStats::load(epub->getCachePath());
-  stats.sessionCount++;
   sessionStartMs = millis();
-  stats.save(epub->getCachePath());
 
-  // Mirror session count increment in global stats.
   globalStats = GlobalReadingStats::load();
-  globalStats.totalSessions++;
-  globalStats.save();
 
   initializeCompletionPromptTrigger();
 
@@ -250,10 +245,15 @@ void EpubReaderActivity::onExit() {
   APP_STATE.readerActivityLoadCount = 0;
   APP_STATE.saveToFile();
 
-  // Accumulate this session's reading time and persist final stats.
-  // Ignore sessions shorter than 3 seconds to avoid skewing the average.
+  // Commit session stats based on how long the session lasted.
+  // Sessions under 1 minute don't count toward session count or reading time.
+  // Sessions under 10 seconds don't add to reading time.
   const unsigned long elapsedMs = millis() - sessionStartMs;
-  if (elapsedMs >= 3000UL) {
+  if (elapsedMs >= 60000UL) {
+    stats.sessionCount++;
+    globalStats.totalSessions++;
+  }
+  if (elapsedMs >= 10000UL) {
     const uint32_t elapsedSecs = static_cast<uint32_t>(elapsedMs / 1000UL);
     stats.totalReadingSeconds += elapsedSecs;
     globalStats.totalReadingSeconds += elapsedSecs;
@@ -378,8 +378,20 @@ void EpubReaderActivity::loop() {
   }
 
   // Long-press Confirm: execute the configured reader action without opening the menu
-  if (SETTINGS.longPressMenuAction != CrossPointSettings::LONG_MENU_OFF &&
-      mappedInput.wasReleased(MappedInputManager::Button::Confirm) && mappedInput.getHeldTime() >= longPressMenuMs) {
+  if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
+    if (longPressMenuHandled) {
+      longPressMenuHandled = false;
+      return;
+    }
+    if (SETTINGS.longPressMenuAction != CrossPointSettings::LONG_MENU_OFF &&
+        mappedInput.getHeldTime() >= longPressMenuMs) {
+      executeLongPressMenuAction();
+      return;
+    }
+  }
+  if (SETTINGS.longPressMenuAction != CrossPointSettings::LONG_MENU_OFF && !longPressMenuHandled &&
+      mappedInput.isPressed(MappedInputManager::Button::Confirm) && mappedInput.getHeldTime() >= longPressMenuMs) {
+    longPressMenuHandled = true;
     executeLongPressMenuAction();
     return;
   }
@@ -451,16 +463,30 @@ void EpubReaderActivity::loop() {
   // Side button long-press: change font size.
   // Always uses Button::Up (increase) and Button::Down (decrease) to keep intuitive
   // top=bigger / bottom=smaller regardless of the Prev/Next side layout setting.
-  if (SETTINGS.sideButtonLongPress == CrossPointSettings::SIDE_LONG_PRESS::SIDE_LONG_FONT_SIZE &&
-      mappedInput.getHeldTime() > skipChapterMs) {
-    if (mappedInput.wasReleased(MappedInputManager::Button::Up)) {
+  if (SETTINGS.sideButtonLongPress == CrossPointSettings::SIDE_LONG_PRESS::SIDE_LONG_FONT_SIZE) {
+    const bool topReleased = mappedInput.wasReleased(MappedInputManager::Button::Up);
+    const bool bottomReleased = mappedInput.wasReleased(MappedInputManager::Button::Down);
+    if (sideButtonLongPressHandled && (topReleased || bottomReleased)) {
+      sideButtonLongPressHandled = false;
+      return;
+    }
+
+    const bool longPressReady = mappedInput.getHeldTime() > skipChapterMs;
+    const bool topLongPressed =
+        longPressReady && (mappedInput.isPressed(MappedInputManager::Button::Up) || topReleased);
+    const bool bottomLongPressed =
+        longPressReady && (mappedInput.isPressed(MappedInputManager::Button::Down) || bottomReleased);
+
+    if (!sideButtonLongPressHandled && topLongPressed) {
+      sideButtonLongPressHandled = !topReleased;
       if (SETTINGS.fontSize < CrossPointSettings::FONT_SIZE_COUNT - 1) {
         SETTINGS.fontSize++;
         reindexCurrentSection();
       }
       return;
     }
-    if (mappedInput.wasReleased(MappedInputManager::Button::Down)) {
+    if (!sideButtonLongPressHandled && bottomLongPressed) {
+      sideButtonLongPressHandled = !bottomReleased;
       if (SETTINGS.fontSize > 0) {
         SETTINGS.fontSize--;
         reindexCurrentSection();
@@ -469,6 +495,9 @@ void EpubReaderActivity::loop() {
     }
   }
 
+  if (consumeLongPowerButtonRelease()) {
+    return;
+  }
   if (executeShortPowerButtonAction()) {
     return;
   }
@@ -477,6 +506,10 @@ void EpubReaderActivity::loop() {
   }
 
   auto [prevTriggered, nextTriggered, fromSideBtn] = ReaderUtils::detectPageTurn(mappedInput);
+  if (SETTINGS.longPwrBtn == CrossPointSettings::SHORT_PWRBTN::PAGE_TURN && consumeLongPowerButtonHold()) {
+    nextTriggered = true;
+    fromSideBtn = false;
+  }
   if (!prevTriggered && !nextTriggered) {
     return;
   }
@@ -910,9 +943,27 @@ bool EpubReaderActivity::executeShortPowerButtonAction() {
   }
 }
 
-bool EpubReaderActivity::executeLongPowerButtonAction() {
-  if (!mappedInput.wasReleased(MappedInputManager::Button::Power) ||
+bool EpubReaderActivity::consumeLongPowerButtonRelease() {
+  if (!mappedInput.wasReleased(MappedInputManager::Button::Power) || !longPowerButtonHandled) {
+    return false;
+  }
+
+  longPowerButtonHandled = false;
+  return true;
+}
+
+bool EpubReaderActivity::consumeLongPowerButtonHold() {
+  if (longPowerButtonHandled || !mappedInput.isPressed(MappedInputManager::Button::Power) ||
       mappedInput.getHeldTime() < SETTINGS.getPowerButtonLongPressDuration()) {
+    return false;
+  }
+
+  longPowerButtonHandled = true;
+  return true;
+}
+
+bool EpubReaderActivity::executeLongPowerButtonAction() {
+  if (SETTINGS.longPwrBtn == CrossPointSettings::SHORT_PWRBTN::PAGE_TURN || !consumeLongPowerButtonHold()) {
     return false;
   }
 
@@ -1135,14 +1186,22 @@ void EpubReaderActivity::render(RenderLock&& lock) {
 
       const auto popupFn = [this]() { GUI.drawPopup(renderer, tr(STR_INDEXING)); };
 
-      if (!section->createSectionFile(SETTINGS.getReaderFontId(), SETTINGS.getReaderLineCompression(),
-                                      SETTINGS.extraParagraphSpacing, SETTINGS.forceParagraphIndents,
-                                      SETTINGS.paragraphAlignment, viewportWidth, viewportHeight,
-                                      SETTINGS.hyphenationEnabled, SETTINGS.embeddedStyle, SETTINGS.imageRendering,
-                                      SETTINGS.bionicReadingEnabled, SETTINGS.guideReadingEnabled, popupFn)) {
+      bool imagesWereSuppressed = false;
+      if (!section->createSectionFile(
+              SETTINGS.getReaderFontId(), SETTINGS.getReaderLineCompression(), SETTINGS.extraParagraphSpacing,
+              SETTINGS.forceParagraphIndents, SETTINGS.paragraphAlignment, viewportWidth, viewportHeight,
+              SETTINGS.hyphenationEnabled, SETTINGS.embeddedStyle, SETTINGS.imageRendering,
+              SETTINGS.bionicReadingEnabled, SETTINGS.guideReadingEnabled, popupFn, &imagesWereSuppressed)) {
         LOG_ERR("ERS", "Failed to persist page data to SD");
         section.reset();
         return;
+      }
+
+      if (imagesWereSuppressed) {
+        snprintf(APP_STATE.pendingAlertTitle, sizeof(APP_STATE.pendingAlertTitle), "%s",
+                 tr(STR_LOW_MEMORY_IMAGES_TITLE));
+        snprintf(APP_STATE.pendingAlertBody, sizeof(APP_STATE.pendingAlertBody), "%s", tr(STR_LOW_MEMORY_IMAGES_BODY));
+        APP_STATE.hasPendingAlert.store(true, std::memory_order_release);
       }
     } else {
       LOG_DBG("ERS", "Cache found, skipping build...");

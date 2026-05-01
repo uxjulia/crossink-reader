@@ -40,6 +40,9 @@ class EpubReaderActivity final : public Activity {
   bool skipNextButtonCheck = false;  // Skip button processing for one frame after subactivity exit
   bool automaticPageTurnActive = false;
   uint8_t currentPageTurnOption = 0;
+  bool longPressMenuHandled = false;
+  bool longPowerButtonHandled = false;
+  bool sideButtonLongPressHandled = false;
   int pageLoadRetryCount = 0;
   bool pendingBookmarkFeedback = false;
   bool bookmarkFeedbackIsAdd = false;
@@ -94,6 +97,8 @@ class EpubReaderActivity final : public Activity {
   void jumpToPercent(int percent);
   void reindexCurrentSection();
   void executeReaderQuickAction(CrossPointSettings::LONG_PRESS_MENU_ACTION action);
+  bool consumeLongPowerButtonRelease();
+  bool consumeLongPowerButtonHold();
   bool executeShortPowerButtonAction();
   bool executeLongPowerButtonAction();
   void onReaderMenuConfirm(EpubReaderMenuActivity::MenuAction action);

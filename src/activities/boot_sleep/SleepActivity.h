@@ -16,6 +16,7 @@ class SleepActivity final : public Activity {
   void renderDefaultSleepScreen() const;
   void renderCustomSleepScreen() const;
   void renderCoverSleepScreen() const;
+  void renderReadingStatsSleepScreen() const;
   void renderBitmapSleepScreen(const Bitmap& bitmap) const;
   bool renderPxcSleepScreen(const std::string& path) const;
   void renderBlankSleepScreen() const;
@@ -23,4 +24,5 @@ class SleepActivity final : public Activity {
   // Tracks the last factory-LUT render so onScreenshotRequest() can re-render the same image.
   mutable std::string lastGrayscalePath;
   mutable bool lastGrayscaleIsPxc = false;
+  bool overlayPageBufferStored = false;
 };

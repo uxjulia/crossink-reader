@@ -10,14 +10,17 @@
 #include <Txt.h>
 #include <Xtc.h>
 
+#include <functional>
 #include <new>
 
+#include "../reader/BookStatsView.h"
 #include "../reader/EpubReaderActivity.h"
 #include "../reader/TxtReaderActivity.h"
 #include "../reader/XtcReaderActivity.h"
 #include "CrossPointSettings.h"
 #include "CrossPointState.h"
 #include "Epub/converters/DirectPixelWriter.h"
+#include "RecentBooksStore.h"
 #include "activities/reader/ReaderUtils.h"
 #include "components/UITheme.h"
 #include "fontIds.h"
@@ -191,23 +194,193 @@ int pngOverlayDraw(PNGDRAW* pDraw) {
   return 1;
 }
 
+std::string filenameFromPath(const std::string& path) {
+  const size_t lastSlash = path.find_last_of('/');
+  return lastSlash == std::string::npos ? path : path.substr(lastSlash + 1);
+}
+
+std::string recentTitleForPath(const std::string& path) {
+  const auto& books = RECENT_BOOKS.getBooks();
+  for (const RecentBook& book : books) {
+    if (book.path == path && !book.title.empty()) {
+      return book.title;
+    }
+  }
+  return {};
+}
+
+enum class OverlayDrawResult : uint8_t { NotFound, Drawn, Failed };
+
+enum class SleepImageMode : uint8_t { Custom, Overlay };
+
+struct SleepImageSelection {
+  std::string path;
+  bool isPng = false;
+  bool isPxc = false;
+};
+
+bool isBmpSleepImagePath(const std::string& path) { return FsHelpers::hasBmpExtension(path); }
+
+bool isPngSleepImagePath(const std::string& path) { return FsHelpers::hasPngExtension(path); }
+
+bool openPreferredSleepDirectory(FsFile& dir, const char*& sleepDir) {
+  sleepDir = nullptr;
+  dir = Storage.open("/.sleep");
+  if (dir && dir.isDirectory()) {
+    sleepDir = "/.sleep";
+    return true;
+  }
+
+  if (dir) dir.close();
+  dir = Storage.open("/sleep");
+  if (dir && dir.isDirectory()) {
+    sleepDir = "/sleep";
+    return true;
+  }
+
+  if (dir) dir.close();
+  return false;
+}
+
+bool selectPinnedSleepImage(SleepImageMode mode, SleepImageSelection& selection) {
+  const std::string& favorite = APP_STATE.favoriteSleepImagePath;
+  if (favorite.empty()) {
+    return false;
+  }
+
+  if (!Storage.exists(favorite.c_str())) {
+    LOG_INF("SLP", "Pinned sleep image missing, falling back: %s", favorite.c_str());
+    return false;
+  }
+
+  if (isBmpSleepImagePath(favorite)) {
+    selection.path = favorite;
+    selection.isPng = false;
+    selection.isPxc = false;
+    return true;
+  }
+
+  if (FsHelpers::hasPxcExtension(favorite)) {
+    if (mode == SleepImageMode::Custom) {
+      selection.path = favorite;
+      selection.isPng = false;
+      selection.isPxc = true;
+      return true;
+    }
+
+    LOG_INF("SLP", "Pinned PXC sleep image requires Custom mode, falling back: %s", favorite.c_str());
+    return false;
+  }
+
+  if (isPngSleepImagePath(favorite)) {
+    if (mode == SleepImageMode::Overlay) {
+      selection.path = favorite;
+      selection.isPng = true;
+      selection.isPxc = false;
+      return true;
+    }
+
+    LOG_INF("SLP", "Pinned PNG sleep image requires Page Overlay mode, falling back: %s", favorite.c_str());
+    return false;
+  }
+
+  LOG_ERR("SLP", "Pinned sleep image has unsupported extension: %s", favorite.c_str());
+  return false;
+}
+
+bool selectRandomSleepImage(SleepImageMode mode, SleepImageSelection& selection) {
+  FsFile dir;
+  const char* sleepDir = nullptr;
+  if (!openPreferredSleepDirectory(dir, sleepDir)) {
+    return false;
+  }
+
+  const bool allowPng = mode == SleepImageMode::Overlay;
+  const bool allowPxc = mode == SleepImageMode::Custom;
+  std::vector<std::string> files;
+  files.reserve(16);
+  char name[500];
+  for (auto file = dir.openNextFile(); file; file = dir.openNextFile()) {
+    if (file.isDirectory()) {
+      file.close();
+      continue;
+    }
+
+    file.getName(name, sizeof(name));
+    std::string filename(name);
+    if (filename.empty() || filename[0] == '.') {
+      file.close();
+      continue;
+    }
+
+    const bool isBmp = FsHelpers::hasBmpExtension(filename);
+    const bool isPng = allowPng && FsHelpers::hasPngExtension(filename);
+    const bool isPxc = allowPxc && FsHelpers::hasPxcExtension(filename);
+    if (!isBmp && !isPng && !isPxc) {
+      file.close();
+      continue;
+    }
+
+    if (isBmp) {
+      Bitmap bitmap(file);
+      const BmpReaderError parseResult = bitmap.parseHeaders();
+      if (parseResult != BmpReaderError::Ok) {
+        LOG_ERR("SLP", "Skipping invalid BMP sleep image %s/%s: %s", sleepDir, filename.c_str(),
+                Bitmap::errorToString(parseResult));
+        file.close();
+        continue;
+      }
+    }
+    if (isPxc) {
+      uint16_t width, height;
+      if (file.read(&width, 2) != 2 || file.read(&height, 2) != 2) {
+        LOG_ERR("SLP", "Skipping PXC sleep image with unreadable header %s/%s", sleepDir, filename.c_str());
+        file.close();
+        continue;
+      }
+    }
+
+    files.emplace_back(std::move(filename));
+    file.close();
+  }
+  dir.close();
+
+  if (files.empty()) {
+    return false;
+  }
+
+  const uint16_t fileCount = static_cast<uint16_t>(std::min(files.size(), static_cast<size_t>(UINT16_MAX)));
+  const uint8_t window =
+      static_cast<uint8_t>(std::min(static_cast<size_t>(APP_STATE.recentSleepFill), files.size() - 1));
+  auto randomFileIndex = static_cast<uint16_t>(random(fileCount));
+  for (uint8_t attempt = 0; attempt < 20 && APP_STATE.isRecentSleep(randomFileIndex, window); attempt++) {
+    randomFileIndex = static_cast<uint16_t>(random(fileCount));
+  }
+
+  APP_STATE.pushRecentSleep(randomFileIndex);
+  APP_STATE.saveToFile();
+  selection.path = std::string(sleepDir) + "/" + files[randomFileIndex];
+  selection.isPng = FsHelpers::hasPngExtension(selection.path);
+  selection.isPxc = FsHelpers::hasPxcExtension(selection.path);
+  return true;
+}
+
 }  // namespace
 
 void SleepActivity::onEnter() {
   Activity::onEnter();
-  GUI.drawPopup(renderer, tr(STR_ENTERING_SLEEP));
 
-  // For OVERLAY mode the popup is suppressed so the frame buffer (reader page) stays intact
-  if (SETTINGS.sleepScreen != CrossPointSettings::SLEEP_SCREEN_MODE::OVERLAY) {
-    // Show the popup in the reader's orientation when sleep starts from an open book.
-    // Reset to portrait afterwards so the sleep screen renderer keeps its existing layout.
-    if (APP_STATE.lastSleepFromReader) {
-      ReaderUtils::applyOrientation(renderer, SETTINGS.orientation);
-      GUI.drawPopup(renderer, tr(STR_ENTERING_SLEEP));
-      renderer.setOrientation(GfxRenderer::Orientation::Portrait);
-    } else {
-      GUI.drawPopup(renderer, tr(STR_ENTERING_SLEEP));
-    }
+  overlayPageBufferStored = SETTINGS.sleepScreen == CrossPointSettings::SLEEP_SCREEN_MODE::OVERLAY &&
+                            APP_STATE.lastSleepFromReader && renderer.storeBwBuffer();
+
+  // Show the popup in the reader's orientation when sleep starts from an open book.
+  // Reset to portrait afterwards so the sleep screen renderer keeps its existing layout.
+  if (APP_STATE.lastSleepFromReader) {
+    ReaderUtils::applyOrientation(renderer, SETTINGS.orientation);
+    GUI.drawPopup(renderer, tr(STR_ENTERING_SLEEP));
+    renderer.setOrientation(GfxRenderer::Orientation::Portrait);
+  } else {
+    GUI.drawPopup(renderer, tr(STR_ENTERING_SLEEP));
   }
 
   switch (SETTINGS.sleepScreen) {
@@ -225,111 +398,43 @@ void SleepActivity::onEnter() {
       }
     case (CrossPointSettings::SLEEP_SCREEN_MODE::OVERLAY):
       return renderOverlaySleepScreen();
+    case (CrossPointSettings::SLEEP_SCREEN_MODE::READING_STATS_SLEEP):
+      return renderReadingStatsSleepScreen();
     default:
       return renderDefaultSleepScreen();
   }
 }
 
 void SleepActivity::renderCustomSleepScreen() const {
-  // Check if we have a /.sleep (preferred) or /sleep directory
-  const char* sleepDir = nullptr;
-  auto dir = Storage.open("/.sleep");
-  if (dir && dir.isDirectory()) {
-    sleepDir = "/.sleep";
-  } else {
-    dir = Storage.open("/sleep");
-    if (dir && dir.isDirectory()) {
-      sleepDir = "/sleep";
-    }
-  }
-
-  if (sleepDir) {
-    std::vector<std::string> files;
-    char name[500];
-    // collect all valid BMP files
-    for (auto file = dir.openNextFile(); file; file = dir.openNextFile()) {
-      if (file.isDirectory()) {
-        continue;
-      }
-      file.getName(name, sizeof(name));
-      auto filename = std::string(name);
-      if (filename[0] == '.') {
-        continue;
-      }
-
-      const bool isBmp = FsHelpers::hasBmpExtension(filename);
-      const bool isPxc = FsHelpers::hasPxcExtension(filename);
-      if (!isBmp && !isPxc) {
-        LOG_DBG("SLP", "Skipping non-BMP/PXC file: %s", name);
-        file.close();
-        continue;
-      }
-      if (isBmp) {
-        Bitmap bitmap(file);
-        if (bitmap.parseHeaders() != BmpReaderError::Ok) {
-          LOG_DBG("SLP", "Skipping invalid BMP file: %s", name);
-          file.close();
-          continue;
-        }
-      }
-      if (isPxc) {
-        uint16_t w, h;
-        if (file.read(&w, 2) != 2 || file.read(&h, 2) != 2) {
-          LOG_DBG("SLP", "Skipping PXC with unreadable header: %s", name);
-          file.close();
-          continue;
-        }
-        const int sw = renderer.getScreenWidth();
-        const int sh = renderer.getScreenHeight();
-        if (w != sw || h != sh) {
-          LOG_DBG("SLP", "Skipping PXC size mismatch %dx%d (screen %dx%d): %s", w, h, sw, sh, name);
-          file.close();
-          continue;
-        }
-      }
-      files.emplace_back(filename);
-    }
-    const auto numFiles = files.size();
-    if (numFiles > 0) {
-      // Pick a random wallpaper, excluding recently shown ones.
-      // Window: up to SLEEP_RECENT_COUNT entries, capped at numFiles-1.
-      const uint16_t fileCount = static_cast<uint16_t>(std::min(numFiles, static_cast<size_t>(UINT16_MAX)));
-      const uint8_t window =
-          static_cast<uint8_t>(std::min(static_cast<size_t>(APP_STATE.recentSleepFill), numFiles - 1));
-      auto randomFileIndex = static_cast<uint16_t>(random(fileCount));
-      for (uint8_t attempt = 0; attempt < 20 && APP_STATE.isRecentSleep(randomFileIndex, window); attempt++) {
-        randomFileIndex = static_cast<uint16_t>(random(fileCount));
-      }
-      APP_STATE.pushRecentSleep(randomFileIndex);
-      APP_STATE.saveToFile();
-      const auto filename = std::string(sleepDir) + "/" + files[randomFileIndex];
-      LOG_DBG("SLP", "Randomly loading: %s/%s", sleepDir, files[randomFileIndex].c_str());
-      delay(100);
-      if (FsHelpers::hasPxcExtension(files[randomFileIndex])) {
-        if (!renderPxcSleepScreen(filename)) {
-          renderDefaultSleepScreen();
-        }
-        dir.close();
+  SleepImageSelection selection;
+  if (selectPinnedSleepImage(SleepImageMode::Custom, selection) ||
+      selectRandomSleepImage(SleepImageMode::Custom, selection)) {
+    LOG_INF("SLP", "Loading custom sleep image: %s", selection.path.c_str());
+    delay(100);
+    if (selection.isPxc) {
+      if (renderPxcSleepScreen(selection.path)) {
         return;
       }
+    } else {
       FsFile file;
-      if (Storage.openFileForRead("SLP", filename, file)) {
+      if (Storage.openFileForRead("SLP", selection.path, file)) {
         Bitmap bitmap(file, true);
         if (bitmap.parseHeaders() == BmpReaderError::Ok) {
           if (bitmap.hasGreyscale() &&
               SETTINGS.sleepScreenCoverFilter == CrossPointSettings::SLEEP_SCREEN_COVER_FILTER::NO_FILTER) {
-            lastGrayscalePath = filename;
+            lastGrayscalePath = selection.path;
             lastGrayscaleIsPxc = false;
           }
           renderBitmapSleepScreen(bitmap);
           return;
         }
+        LOG_ERR("SLP", "Failed to parse custom sleep BMP: %s", selection.path.c_str());
+      } else {
+        LOG_ERR("SLP", "Failed to open custom sleep image: %s", selection.path.c_str());
       }
     }
   }
-  if (dir) dir.close();
 
-  // Check root for sleep.pxc (preferred) or sleep.bmp
   if (Storage.exists("/sleep.pxc")) {
     LOG_DBG("SLP", "Loading: /sleep.pxc");
     if (renderPxcSleepScreen("/sleep.pxc")) {
@@ -514,9 +619,19 @@ void SleepActivity::renderBitmapSleepScreen(const Bitmap& bitmap) const {
   }
 
   LOG_DBG("SLP", "drawing to %d x %d", x, y);
+  renderer.clearScreen();
+  renderer.displayBuffer(HalDisplay::FAST_REFRESH);
 
   const bool hasGreyscale = bitmap.hasGreyscale() &&
                             SETTINGS.sleepScreenCoverFilter == CrossPointSettings::SLEEP_SCREEN_COVER_FILTER::NO_FILTER;
+
+  renderer.drawBitmap(bitmap, x, y, pageWidth, pageHeight, cropX, cropY);
+
+  if (SETTINGS.sleepScreenCoverFilter == CrossPointSettings::SLEEP_SCREEN_COVER_FILTER::INVERTED_BLACK_AND_WHITE) {
+    renderer.invertScreen();
+  }
+
+  renderer.displayBuffer(HalDisplay::FAST_REFRESH);
 
   if (hasGreyscale) {
     struct BitmapGrayCtx {
@@ -688,6 +803,26 @@ void SleepActivity::renderCoverSleepScreen() const {
   return (this->*renderNoCoverSleepScreen)();
 }
 
+void SleepActivity::renderReadingStatsSleepScreen() const {
+  BookReadingStats bookStats;
+  GlobalReadingStats globalStats = GlobalReadingStats::load();
+  std::string bookTitle = tr(STR_READING_STATS);
+
+  const std::string& path = APP_STATE.openEpubPath;
+  if (!path.empty()) {
+    const std::string recentTitle = recentTitleForPath(path);
+    bookTitle = recentTitle.empty() ? filenameFromPath(path) : recentTitle;
+
+    if (FsHelpers::hasEpubExtension(path)) {
+      const std::string cachePath = "/.crosspoint/epub_" + std::to_string(std::hash<std::string>{}(path));
+      bookStats = BookReadingStats::load(cachePath);
+    }
+  }
+
+  renderBookStatsView(renderer, nullptr, bookTitle, bookStats, globalStats, false);
+  renderer.displayBuffer(HalDisplay::HALF_REFRESH);
+}
+
 void SleepActivity::renderBlankSleepScreen() const {
   renderer.clearScreen();
   renderer.displayBuffer(HalDisplay::HALF_REFRESH);
@@ -700,10 +835,12 @@ void SleepActivity::renderOverlaySleepScreen() const {
   const auto pageWidth = renderer.getScreenWidth();
   const auto pageHeight = renderer.getScreenHeight();
 
-  // Step 1: Ensure the frame buffer contains the reader page.
-  // When coming from a reader activity the frame buffer already holds the page.
-  // When coming from a non-reader activity we re-render it from the saved progress.
-  if (!APP_STATE.lastSleepFromReader && !APP_STATE.openEpubPath.empty()) {
+  // Step 1: Ensure the frame buffer contains only the reader page.
+  // When sleeping from the reader, restore the page snapshot taken before the
+  // popup was drawn. Otherwise, rebuild from the saved position.
+  if (overlayPageBufferStored) {
+    renderer.restoreBwBuffer();
+  } else if (!APP_STATE.openEpubPath.empty()) {
     const auto& path = APP_STATE.openEpubPath;
     bool rendered = false;
 
@@ -719,6 +856,8 @@ void SleepActivity::renderOverlaySleepScreen() const {
       LOG_DBG("SLP", "Page re-render failed, using white background");
       renderer.clearScreen();
     }
+  } else {
+    renderer.clearScreen();
   }
 
   // Remove the live battery strip from the preserved/reconstructed reader page so the
@@ -728,13 +867,23 @@ void SleepActivity::renderOverlaySleepScreen() const {
   // Step 2: Load the overlay image using the same selection logic as renderCustomSleepScreen.
   // BMP: white pixels are skipped (transparent via drawBitmap), black pixels composited on top.
   // PNG: pixels with alpha < 128 are skipped; opaque pixels are drawn with their grayscale value.
-  auto tryDrawOverlay = [&](const std::string& filename) -> bool {
+  auto tryDrawOverlay = [&](const std::string& filename) -> OverlayDrawResult {
     FsFile file;
-    if (!Storage.openFileForRead("SLP", filename, file)) return false;
+    if (!Storage.openFileForRead("SLP", filename, file)) {
+      if (Storage.exists(filename.c_str())) {
+        LOG_ERR("SLP", "BMP overlay exists but could not be opened: %s", filename.c_str());
+        return OverlayDrawResult::Failed;
+      }
+      LOG_DBG("SLP", "BMP overlay not found: %s", filename.c_str());
+      return OverlayDrawResult::NotFound;
+    }
     Bitmap bitmap(file, true);
-    if (bitmap.parseHeaders() != BmpReaderError::Ok) {
+    const BmpReaderError parseResult = bitmap.parseHeaders();
+    if (parseResult != BmpReaderError::Ok) {
+      LOG_ERR("SLP", "BMP overlay header parse failed for %s: %s", filename.c_str(),
+              Bitmap::errorToString(parseResult));
       file.close();
-      return false;
+      return OverlayDrawResult::Failed;
     }
 
     int x, y;
@@ -755,25 +904,35 @@ void SleepActivity::renderOverlaySleepScreen() const {
     }
 
     // Draw without clearScreen so the reader page remains in the frame buffer beneath
+    LOG_INF("SLP", "Drawing BMP overlay: %s", filename.c_str());
     renderer.drawBitmap(bitmap, x, y, pageWidth, pageHeight, cropX, cropY);
     file.close();
-    return true;
+    return OverlayDrawResult::Drawn;
   };
 
-  auto tryDrawPngOverlay = [&](const std::string& filename) -> bool {
+  auto tryDrawPngOverlay = [&](const std::string& filename) -> OverlayDrawResult {
+    if (!Storage.exists(filename.c_str())) {
+      LOG_DBG("SLP", "PNG overlay not found: %s", filename.c_str());
+      return OverlayDrawResult::NotFound;
+    }
+
     constexpr size_t MIN_FREE_HEAP = 60 * 1024;  // PNG decoder ~42 KB + overhead
     if (ESP.getFreeHeap() < MIN_FREE_HEAP) {
-      LOG_ERR("SLP", "Not enough heap for PNG overlay decoder");
-      return false;
+      LOG_ERR("SLP", "Not enough heap for PNG overlay decoder: %u free, need %u for %s", ESP.getFreeHeap(),
+              static_cast<unsigned>(MIN_FREE_HEAP), filename.c_str());
+      return OverlayDrawResult::Failed;
     }
     PNG* png = new (std::nothrow) PNG();
-    if (!png) return false;
+    if (!png) {
+      LOG_ERR("SLP", "Failed to allocate PNG overlay decoder for %s", filename.c_str());
+      return OverlayDrawResult::Failed;
+    }
 
     int rc = png->open(filename.c_str(), pngSleepOpen, pngSleepClose, pngSleepRead, pngSleepSeek, pngOverlayDraw);
     if (rc != PNG_SUCCESS) {
-      LOG_DBG("SLP", "PNG open failed: %s (%d)", filename.c_str(), rc);
       delete png;
-      return false;
+      LOG_ERR("SLP", "PNG overlay open failed for %s: %d", filename.c_str(), rc);
+      return OverlayDrawResult::Failed;
     }
 
     const int srcW = png->getWidth(), srcH = png->getHeight();
@@ -800,85 +959,51 @@ void SleepActivity::renderOverlaySleepScreen() const {
     ctx.transparentColor = -2;  // will be resolved on first draw callback (after tRNS is parsed)
     ctx.pngObj = png;
 
+    LOG_INF("SLP", "Drawing PNG overlay: %s", filename.c_str());
     rc = png->decode(&ctx, 0);
     png->close();
     delete png;
-    return rc == PNG_SUCCESS;
+    if (rc != PNG_SUCCESS) {
+      LOG_ERR("SLP", "PNG overlay decode failed for %s: %d", filename.c_str(), rc);
+      return OverlayDrawResult::Failed;
+    }
+    return OverlayDrawResult::Drawn;
   };
 
-  // Try /.sleep/ (preferred) or /sleep/ directory (random selection, same as renderCustomSleepScreen).
-  // Accepts both .bmp and .png files; .bmp headers are validated during the scan.
   bool overlayDrawn = false;
-  const char* sleepDir = nullptr;
-  auto dir = Storage.open("/.sleep");
-  if (dir && dir.isDirectory()) {
-    sleepDir = "/.sleep";
-  } else {
-    if (dir) dir.close();
-    dir = Storage.open("/sleep");
-    if (dir && dir.isDirectory()) {
-      sleepDir = "/sleep";
-    }
-  }
-  if (sleepDir) {
-    std::vector<std::string> files;
-    char name[500];
-    for (auto file = dir.openNextFile(); file; file = dir.openNextFile()) {
-      if (file.isDirectory()) {
-        file.close();
-        continue;
-      }
-      file.getName(name, sizeof(name));
-      auto filename = std::string(name);
-      if (filename[0] == '.') {
-        file.close();
-        continue;
-      }
-      const bool isBmp = FsHelpers::checkFileExtension(filename, ".bmp");
-      const bool isPng = FsHelpers::checkFileExtension(filename, ".png");
-      if (!isBmp && !isPng) {
-        file.close();
-        continue;
-      }
-      if (isBmp) {
-        Bitmap bmp(file);
-        if (bmp.parseHeaders() != BmpReaderError::Ok) {
-          file.close();
-          continue;
-        }
-      }
-      files.emplace_back(filename);
-      file.close();
-    }
-    const auto numFiles = files.size();
-    if (numFiles > 0) {
-      const uint16_t fileCount = static_cast<uint16_t>(std::min(numFiles, static_cast<size_t>(UINT16_MAX)));
-      const uint8_t window =
-          static_cast<uint8_t>(std::min(static_cast<size_t>(APP_STATE.recentSleepFill), numFiles - 1));
-      auto randomFileIndex = static_cast<uint16_t>(random(fileCount));
-      for (uint8_t attempt = 0; attempt < 20 && APP_STATE.isRecentSleep(randomFileIndex, window); attempt++) {
-        randomFileIndex = random(numFiles);
-      }
-      APP_STATE.pushRecentSleep(randomFileIndex);
-      APP_STATE.saveToFile();
-      const std::string selected = std::string(sleepDir) + "/" + files[randomFileIndex];
-      if (FsHelpers::checkFileExtension(selected, ".png")) {
-        overlayDrawn = tryDrawPngOverlay(selected);
-      } else {
-        overlayDrawn = tryDrawOverlay(selected);
-      }
-    }
-  }
-  if (dir) dir.close();
+  bool overlayCandidateFailed = false;
+  SleepImageSelection selection;
+  auto trySelectedOverlay = [&](const SleepImageSelection& image) {
+    LOG_INF("SLP", "Selected overlay image: %s", image.path.c_str());
+    const OverlayDrawResult result = image.isPng ? tryDrawPngOverlay(image.path) : tryDrawOverlay(image.path);
+    overlayDrawn = result == OverlayDrawResult::Drawn;
+    overlayCandidateFailed = overlayCandidateFailed || result == OverlayDrawResult::Failed;
+  };
 
-  if (!overlayDrawn) {
-    overlayDrawn = tryDrawOverlay("/sleep.bmp");
+  if (selectPinnedSleepImage(SleepImageMode::Overlay, selection)) {
+    trySelectedOverlay(selection);
   }
-  if (!overlayDrawn) {
-    overlayDrawn = tryDrawPngOverlay("/sleep.png");
+  if (!overlayDrawn && selectRandomSleepImage(SleepImageMode::Overlay, selection)) {
+    trySelectedOverlay(selection);
   }
 
   if (!overlayDrawn) {
+    const OverlayDrawResult result = tryDrawOverlay("/sleep.bmp");
+    overlayDrawn = result == OverlayDrawResult::Drawn;
+    overlayCandidateFailed = overlayCandidateFailed || result == OverlayDrawResult::Failed;
+  }
+  if (!overlayDrawn) {
+    const OverlayDrawResult result = tryDrawPngOverlay("/sleep.png");
+    overlayDrawn = result == OverlayDrawResult::Drawn;
+    overlayCandidateFailed = overlayCandidateFailed || result == OverlayDrawResult::Failed;
+  }
+
+  if (!overlayDrawn) {
+    if (overlayCandidateFailed) {
+      LOG_ERR("SLP", "Overlay image was found but could not be drawn; falling back to default sleep screen");
+      renderer.setOrientation(savedOrientation);
+      return renderDefaultSleepScreen();
+    }
     LOG_DBG("SLP", "No overlay image found, displaying page without overlay");
   }
 

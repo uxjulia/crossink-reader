@@ -101,11 +101,22 @@ void XtcReaderActivity::loop() {
   const bool frontPrev = frontUsePress ? mappedInput.wasPressed(MappedInputManager::Button::Left)
                                        : mappedInput.wasReleased(MappedInputManager::Button::Left);
   const bool powerReleased = mappedInput.wasReleased(MappedInputManager::Button::Power);
+  if (powerReleased && longPowerPageTurnHandled) {
+    longPowerPageTurnHandled = false;
+    return;
+  }
   const bool shortPowerTurn = SETTINGS.shortPwrBtn == CrossPointSettings::SHORT_PWRBTN::PAGE_TURN && powerReleased &&
                               mappedInput.getHeldTime() < SETTINGS.getPowerButtonLongPressDuration();
   const bool longPowerTurn = SETTINGS.longPwrBtn == CrossPointSettings::SHORT_PWRBTN::PAGE_TURN && powerReleased &&
                              mappedInput.getHeldTime() >= SETTINGS.getPowerButtonLongPressDuration();
-  const bool powerPageTurn = shortPowerTurn || longPowerTurn;
+  const bool timedLongPowerTurn = SETTINGS.longPwrBtn == CrossPointSettings::SHORT_PWRBTN::PAGE_TURN &&
+                                  !longPowerPageTurnHandled &&
+                                  mappedInput.isPressed(MappedInputManager::Button::Power) &&
+                                  mappedInput.getHeldTime() >= SETTINGS.getPowerButtonLongPressDuration();
+  if (timedLongPowerTurn) {
+    longPowerPageTurnHandled = true;
+  }
+  const bool powerPageTurn = shortPowerTurn || longPowerTurn || timedLongPowerTurn;
   const bool frontNext = frontUsePress ? (mappedInput.wasPressed(MappedInputManager::Button::Right) || powerPageTurn)
                                        : (mappedInput.wasReleased(MappedInputManager::Button::Right) || powerPageTurn);
 
@@ -239,8 +250,11 @@ void XtcReaderActivity::renderPage() {
     renderer.displayBuffer();
     return;
   }
-  if (xtc->loadPage(currentPage, pageBuffer, pageBufferSize) == 0) {
-    LOG_ERR("XTR", "Failed to load page %lu", currentPage);
+
+  size_t bytesRead = xtc->loadPage(currentPage, pageBuffer, pageBufferSize);
+  if (bytesRead == 0) {
+    LOG_ERR("XTR", "Failed to load page %lu: bufferSize=%lu bitDepth=%u error=%s", currentPage, pageBufferSize,
+            bitDepth, xtc::errorToString(xtc->getLastError()));
     free(pageBuffer);
     renderer.clearScreen();
     renderer.drawCenteredText(UI_12_FONT_ID, 300, tr(STR_PAGE_LOAD_ERROR), true, EpdFontFamily::BOLD);

@@ -16,7 +16,7 @@ inline const std::vector<SettingInfo>& getSettingsList() {
       // --- Display ---
       SettingInfo::Enum(StrId::STR_SLEEP_SCREEN, &CrossPointSettings::sleepScreen,
                         {StrId::STR_DARK, StrId::STR_LIGHT, StrId::STR_CUSTOM, StrId::STR_COVER, StrId::STR_NONE_OPT,
-                         StrId::STR_COVER_CUSTOM, StrId::STR_PAGE_OVERLAY},
+                         StrId::STR_COVER_CUSTOM, StrId::STR_PAGE_OVERLAY, StrId::STR_READING_STATS},
                         "sleepScreen", StrId::STR_CAT_DISPLAY),
       SettingInfo::Enum(StrId::STR_SLEEP_COVER_MODE, &CrossPointSettings::sleepScreenCoverMode,
                         {StrId::STR_FIT, StrId::STR_CROP}, "sleepScreenCoverMode", StrId::STR_CAT_DISPLAY),
@@ -31,8 +31,9 @@ inline const std::vector<SettingInfo>& getSettingsList() {
           {StrId::STR_PAGES_1, StrId::STR_PAGES_5, StrId::STR_PAGES_10, StrId::STR_PAGES_15, StrId::STR_PAGES_30},
           "refreshFrequency", StrId::STR_CAT_DISPLAY),
       SettingInfo::Enum(StrId::STR_UI_THEME, &CrossPointSettings::uiTheme,
-                        {StrId::STR_THEME_CLASSIC, StrId::STR_THEME_LYRA, StrId::STR_THEME_LYRA_EXTENDED}, "uiTheme",
-                        StrId::STR_CAT_DISPLAY),
+                        {StrId::STR_THEME_CLASSIC, StrId::STR_THEME_LYRA, StrId::STR_THEME_LYRA_EXTENDED,
+                         StrId::STR_THEME_ROUNDEDRAFF},
+                        "uiTheme", StrId::STR_CAT_DISPLAY),
       SettingInfo::Toggle(StrId::STR_SUNLIGHT_FADING_FIX, &CrossPointSettings::fadingFix, "fadingFix",
                           StrId::STR_CAT_DISPLAY),
 
