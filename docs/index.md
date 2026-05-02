@@ -1,5 +1,6 @@
 ---
-title: CrossInk
+title: Home
+nav_order: 1
 ---
 
 # CrossInk
