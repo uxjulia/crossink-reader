@@ -22,7 +22,16 @@ std::string clippingPathForBook(const std::string& bookTitle, const std::string&
   return std::string(ClippingsManager::CLIPPINGS_DIR) + "/" + filename;
 }
 
+bool isMeaningfulChapterTitle(const std::string& chapterTitle, const std::string& bookTitle) {
+  if (chapterTitle.empty()) {
+    return false;
+  }
+  return chapterTitle != bookTitle;
 }
+
+}
+
+bool ClippingsManager::needsFileHeader(HalFile& file) { return file.size() == 0; }
 
 bool ClippingsManager::saveClipping(const std::string& bookTitle, const std::string& author,
                                     const std::string& chapterTitle, int pageNumber, const std::string& selectedText) {
@@ -38,21 +47,29 @@ bool ClippingsManager::saveClipping(const std::string& bookTitle, const std::str
     return false;
   }
 
-  // Build header and location as strings to avoid truncation of long titles/authors
-  const std::string header = bookTitle + " (" + author + ")\n";
+  std::string fileHeader;
+  if (needsFileHeader(file)) {
+    fileHeader = bookTitle.empty() ? "book" : bookTitle;
+    fileHeader += "\n";
+    if (!author.empty()) {
+      fileHeader += author;
+      fileHeader += "\n";
+    }
+    fileHeader += "\n==========\n\n";
+  }
+
   std::string location = "- Your Highlight on Page " + std::to_string(pageNumber);
-  if (!chapterTitle.empty()) {
+  if (isMeaningfulChapterTitle(chapterTitle, bookTitle)) {
     location += " | " + chapterTitle;
   }
-  location += "\n";
+  location += "\n\n";
 
   static constexpr size_t MAX_TEXT = 2000;
   const size_t textLen = selectedText.size() < MAX_TEXT ? selectedText.size() : MAX_TEXT;
 
-  // Concatenate into a single buffer and perform one write to avoid partial records on SD failure
-  static constexpr char separator[] = "\n==========\n";
+  static constexpr char separator[] = "\n\n==========\n\n";
   static constexpr size_t separatorLen = sizeof(separator) - 1;
-  const size_t totalLen = header.size() + location.size() + 1 + textLen + separatorLen;
+  const size_t totalLen = fileHeader.size() + location.size() + textLen + separatorLen;
 
   auto* buf = static_cast<char*>(malloc(totalLen));
   if (!buf) {
@@ -62,11 +79,10 @@ bool ClippingsManager::saveClipping(const std::string& bookTitle, const std::str
   }
 
   size_t pos = 0;
-  memcpy(buf + pos, header.c_str(), header.size());
-  pos += header.size();
+  memcpy(buf + pos, fileHeader.c_str(), fileHeader.size());
+  pos += fileHeader.size();
   memcpy(buf + pos, location.c_str(), location.size());
   pos += location.size();
-  buf[pos++] = '\n';
   memcpy(buf + pos, selectedText.c_str(), textLen);
   pos += textLen;
   memcpy(buf + pos, separator, separatorLen);
