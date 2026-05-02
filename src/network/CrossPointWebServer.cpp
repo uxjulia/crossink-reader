@@ -17,12 +17,12 @@
 #include "CrossPointSettings.h"
 #include "OpdsServerStore.h"
 #include "SettingsList.h"
-#include "StringUtils.h"
 #include "WebDAVHandler.h"
 #include "html/FilesPageHtml.generated.h"
 #include "html/HomePageHtml.generated.h"
 #include "html/SettingsPageHtml.generated.h"
 #include "html/js/jszip_minJs.generated.h"
+#include "util/StringUtils.h"
 
 namespace {
 // Folders/files to hide from the web interface file browser
