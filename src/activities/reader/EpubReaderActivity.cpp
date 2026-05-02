@@ -1442,6 +1442,20 @@ void EpubReaderActivity::renderContents(std::unique_ptr<Page> page, const int or
   if (useFactoryGray) {
     lastFactoryMarginTop = orientedMarginTop;
     lastFactoryMarginLeft = orientedMarginLeft;
+  } else if (isImagePage) {
+    // Normal-mode (differential LUT) image page: pablohc's double-FAST_REFRESH
+    // technique. HALF_REFRESH sets e-ink particles too firmly for the
+    // differential grayscale LUT to adjust afterwards, washing out images.
+    // Blank only the image bounding box, FAST_REFRESH, re-render with images,
+    // FAST_REFRESH again. (Ported from upstream CrossInk #957.)
+    int16_t imgX, imgY, imgW, imgH;
+    if (page->getImageBoundingBox(imgX, imgY, imgW, imgH)) {
+      renderer.fillRect(imgX + orientedMarginLeft, imgY + orientedMarginTop, imgW, imgH, false);
+      renderer.displayBuffer(HalDisplay::FAST_REFRESH);
+      page->render(renderer, SETTINGS.getReaderFontId(), orientedMarginLeft, orientedMarginTop);
+      renderStatusBar();
+    }
+    renderer.displayBuffer(HalDisplay::FAST_REFRESH);
   } else {
     ReaderUtils::displayWithRefreshCycle(renderer, pagesUntilFullRefresh);
   }
