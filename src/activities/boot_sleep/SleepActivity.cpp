@@ -29,6 +29,24 @@
 
 namespace {
 
+// Re-draws the "Entering sleep" popup into the cleared framebuffer just before the
+// HALF_REFRESH preflash inside renderGrayscaleSinglePass. Without this, the popup's
+// black pixels are forced to flip to white during the preflash on top of the FAST_REFRESH
+// residue from GUI.drawPopup, leaving gray dirt in the wallpaper's white areas.
+// Mirrors upstream crosspoint-reader PR#1614.
+void drawEnteringSleepOverlay(const GfxRenderer& r, const void*) {
+  constexpr int margin = 15;
+  const char* msg = tr(STR_ENTERING_SLEEP);
+  const int y = static_cast<int>(r.getScreenHeight() * 0.075f);
+  const int textWidth = r.getTextWidth(UI_12_FONT_ID, msg, EpdFontFamily::BOLD);
+  const int w = textWidth + margin * 2;
+  const int h = r.getLineHeight(UI_12_FONT_ID) + margin * 2;
+  const int x = (r.getScreenWidth() - w) / 2;
+  r.fillRect(x - 2, y - 2, w + 4, h + 4, true);
+  r.fillRect(x, y, w, h, false);
+  r.drawText(UI_12_FONT_ID, x + margin, y + margin - 2, msg, true, EpdFontFamily::BOLD);
+}
+
 void hideOverlayBatteryStrip(const GfxRenderer& renderer) {
   if (!SETTINGS.statusBarBattery) {
     return;
@@ -540,7 +558,7 @@ bool SleepActivity::renderPxcSleepScreen(const std::string& path) const {
           }
           free(rowBuf);
         },
-        &ctx);
+        &ctx, &drawEnteringSleepOverlay, nullptr);
   } else {
     // BLACK_AND_WHITE / INVERTED_BLACK_AND_WHITE: threshold PXC to 1-bit
     // (pv 0=Black, 1=DarkGrey map to dark; 2=LightGrey, 3=White map to light)
@@ -619,7 +637,6 @@ void SleepActivity::renderBitmapSleepScreen(const Bitmap& bitmap) const {
 
   LOG_DBG("SLP", "drawing to %d x %d", x, y);
   renderer.clearScreen();
-  renderer.displayBuffer(HalDisplay::FAST_REFRESH);
 
   const bool hasGreyscale = bitmap.hasGreyscale() &&
                             SETTINGS.sleepScreenCoverFilter == CrossPointSettings::SLEEP_SCREEN_COVER_FILTER::NO_FILTER;
@@ -630,7 +647,7 @@ void SleepActivity::renderBitmapSleepScreen(const Bitmap& bitmap) const {
     renderer.invertScreen();
   }
 
-  renderer.displayBuffer(HalDisplay::FAST_REFRESH);
+  renderer.displayBuffer(HalDisplay::HALF_REFRESH);
 
   if (hasGreyscale) {
     struct BitmapGrayCtx {
@@ -645,7 +662,7 @@ void SleepActivity::renderBitmapSleepScreen(const Bitmap& bitmap) const {
           const auto* c = static_cast<const BitmapGrayCtx*>(raw);
           r.drawBitmap(*c->bitmap, c->x, c->y, c->maxWidth, c->maxHeight, c->cropX, c->cropY);
         },
-        &grayCtx);
+        &grayCtx, &drawEnteringSleepOverlay, nullptr);
   } else {
     renderer.clearScreen();
     renderer.drawBitmap(bitmap, x, y, pageWidth, pageHeight, cropX, cropY);
