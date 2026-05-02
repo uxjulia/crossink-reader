@@ -57,7 +57,7 @@ class ClipSelectionActivity final : public Activity {
   ButtonNavigator buttonNavigator;
 
   Rect alignedRect(int x, int y, int w, int h) const;
-  void switchToPage(int pageIdx);
+  bool switchToPage(int pageIdx);
   void drawHighlights();
   int lineEndForward(int idx) const;
   int lineEndBackward(int idx) const;

@@ -26,8 +26,8 @@ std::string clippingPathForBook(const std::string& bookTitle, const std::string&
 
 bool ClippingsManager::saveClipping(const std::string& bookTitle, const std::string& author,
                                     const std::string& chapterTitle, int pageNumber, const std::string& selectedText) {
-  if (!Storage.mkdir(CLIPPINGS_DIR)) {
-    LOG_ERR("CLIP", "Failed to create %s", CLIPPINGS_DIR);
+  if (!Storage.ensureDirectoryExists(CLIPPINGS_DIR)) {
+    LOG_ERR("CLIP", "Failed to ensure %s exists", CLIPPINGS_DIR);
     return false;
   }
 

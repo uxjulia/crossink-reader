@@ -54,7 +54,13 @@ void ClipSelectionActivity::onEnter() {
 
   // Re-render page 0 to get a clean framebuffer — the previous activity (menu)
   // may still be painted on screen when onEnter() runs.
-  switchToPage(0);
+  if (!switchToPage(0)) {
+    ActivityResult result;
+    result.isCancelled = true;
+    setResult(std::move(result));
+    finish();
+    return;
+  }
   requestUpdate();
 }
 
@@ -139,7 +145,9 @@ void ClipSelectionActivity::render(RenderLock&&) {
   if (!savedBuffer) return;
 
   if (needsPageSwitch) {
-    switchToPage(words[cursorIdx].pageIdx);
+    if (!switchToPage(words[cursorIdx].pageIdx)) {
+      return;
+    }
     needsPageSwitch = false;
   }
 
@@ -147,13 +155,15 @@ void ClipSelectionActivity::render(RenderLock&&) {
   memcpy(renderer.getFrameBuffer(), savedBuffer, savedBufferSize);
   drawHighlights();
 
-  const auto labels = mappedInput.mapLabels(tr(STR_BACK), tr(STR_SELECT), tr(STR_DIR_UP), tr(STR_DIR_DOWN));
+  const auto labels =
+      mappedInput.mapLabels(tr(STR_BACK), startMarkIdx == -1 ? tr(STR_SELECT) : tr(STR_DONE), tr(STR_DIR_LEFT),
+                            tr(STR_DIR_RIGHT));
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
 
   renderer.displayBuffer(HalDisplay::FAST_REFRESH);
 }
 
-void ClipSelectionActivity::switchToPage(int pageIdx) {
+bool ClipSelectionActivity::switchToPage(int pageIdx) {
   const int oldPage = section.currentPage;
   section.currentPage = startPageInSection + pageIdx;
   auto page = section.loadPageFromSectionFile();
@@ -161,7 +171,7 @@ void ClipSelectionActivity::switchToPage(int pageIdx) {
     section.currentPage = oldPage;
     LOG_ERR("CLIP", "Failed to load page %d (section.currentPage=%d, currentDisplayPage=%d) — reverted", pageIdx,
             section.currentPage, currentDisplayPage);
-    return;
+    return false;
   }
 
   renderer.clearScreen();
@@ -169,6 +179,7 @@ void ClipSelectionActivity::switchToPage(int pageIdx) {
   // displayBuffer is intentionally omitted here — render() always controls the final display call
   memcpy(savedBuffer, renderer.getFrameBuffer(), savedBufferSize);
   currentDisplayPage = pageIdx;
+  return true;
 }
 
 void ClipSelectionActivity::drawHighlights() {

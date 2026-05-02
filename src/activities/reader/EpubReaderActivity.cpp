@@ -351,6 +351,19 @@ void EpubReaderActivity::loop() {
     }
   }
 
+  if (pendingClippingSaveFailedFeedback) {
+    const bool timedOut = (millis() - clippingSaveFailedFeedbackShowTime) >= 1200UL;
+    const bool navPressed = mappedInput.wasReleased(MappedInputManager::Button::Left) ||
+                            mappedInput.wasReleased(MappedInputManager::Button::Right) ||
+                            mappedInput.wasReleased(MappedInputManager::Button::Up) ||
+                            mappedInput.wasReleased(MappedInputManager::Button::Down);
+    if (timedOut || navPressed) {
+      pendingClippingSaveFailedFeedback = false;
+      requestUpdate();
+      return;
+    }
+  }
+
   if (automaticPageTurnActive) {
     if (mappedInput.wasReleased(MappedInputManager::Button::Confirm) ||
         mappedInput.wasReleased(MappedInputManager::Button::Back)) {
@@ -756,8 +769,10 @@ void EpubReaderActivity::onReaderMenuConfirm(EpubReaderMenuActivity::MenuAction 
                 if (!result.isCancelled) {
                   const auto& clip = std::get<ClippingResult>(result.data);
                   if (!clip.text.empty()) {
-                    ClippingsManager::saveClipping(epub->getTitle(), epub->getAuthor(), chapterTitle, startPage + 1,
-                                                   clip.text);
+                    if (!ClippingsManager::saveClipping(epub->getTitle(), epub->getAuthor(), chapterTitle,
+                                                        startPage + 1, clip.text)) {
+                      showClippingSaveFailedFeedback();
+                    }
                   }
                 }
                 requestUpdate();
@@ -1065,6 +1080,11 @@ void EpubReaderActivity::showCompletedFeedback(bool isCompleted) {
   completedFeedbackIsFinished = isCompleted;
   pendingCompletedFeedback = true;
   completedFeedbackShowTime = millis();
+}
+
+void EpubReaderActivity::showClippingSaveFailedFeedback() {
+  pendingClippingSaveFailedFeedback = true;
+  clippingSaveFailedFeedbackShowTime = millis();
 }
 
 void EpubReaderActivity::applyOrientation(const uint8_t orientation) {
@@ -1444,6 +1464,19 @@ void EpubReaderActivity::renderContents(std::unique_ptr<Page> page, const int or
   }
   if (pendingCompletedFeedback) {
     const char* msg = completedFeedbackIsFinished ? tr(STR_MARKED_FINISHED) : tr(STR_MARKED_UNFINISHED);
+    constexpr int toastPadX = 20;
+    constexpr int toastPadY = 12;
+    const int msgW = renderer.getTextWidth(UI_10_FONT_ID, msg);
+    const int msgH = renderer.getLineHeight(UI_10_FONT_ID);
+    const int toastW = msgW + toastPadX * 2;
+    const int toastH = msgH + toastPadY * 2;
+    const int toastX = (renderer.getScreenWidth() - toastW) / 2;
+    const int toastY = (renderer.getScreenHeight() - toastH) / 2;
+    renderer.fillRect(toastX, toastY, toastW, toastH, true);
+    renderer.drawText(UI_10_FONT_ID, toastX + toastPadX, toastY + toastPadY, msg, false);
+  }
+  if (pendingClippingSaveFailedFeedback) {
+    const char* msg = tr(STR_CLIPPING_SAVE_FAILED);
     constexpr int toastPadX = 20;
     constexpr int toastPadY = 12;
     const int msgW = renderer.getTextWidth(UI_10_FONT_ID, msg);
