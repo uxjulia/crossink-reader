@@ -102,7 +102,7 @@ void ActivityManager::loop() {
 
         // Request an update to ensure the popped activity gets re-rendered
         if (pendingAction == PendingAction::None) {
-          requestUpdate();
+          requestUpdateAndWait();
         }
 
         // Handler may request another pending action, we will handle it in the next loop iteration
@@ -203,7 +203,8 @@ void ActivityManager::goToReader(std::string path) {
 }
 
 void ActivityManager::goToSleep() {
-  replaceActivity(std::make_unique<SleepActivity>(renderer, mappedInput));
+  const bool canSnapshotOverlay = currentActivity && currentActivity->canSnapshotForSleepOverlay();
+  replaceActivity(std::make_unique<SleepActivity>(renderer, mappedInput, canSnapshotOverlay));
   loop();  // Important: sleep screen must be rendered immediately, the caller will go to sleep right after this returns
 }
 
@@ -239,6 +240,10 @@ void ActivityManager::popActivity() {
 bool ActivityManager::preventAutoSleep() const { return currentActivity && currentActivity->preventAutoSleep(); }
 
 bool ActivityManager::isReaderActivity() const { return currentActivity && currentActivity->isReaderActivity(); }
+
+bool ActivityManager::canSnapshotForSleepOverlay() const {
+  return currentActivity && currentActivity->canSnapshotForSleepOverlay();
+}
 
 bool ActivityManager::skipLoopDelay() const { return currentActivity && currentActivity->skipLoopDelay(); }
 
