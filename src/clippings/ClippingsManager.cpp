@@ -30,9 +30,6 @@ bool isMeaningfulChapterTitle(const std::string& chapterTitle, const std::string
 }
 
 }
-
-bool ClippingsManager::needsFileHeader(HalFile& file) { return file.size() == 0; }
-
 bool ClippingsManager::saveClipping(const std::string& bookTitle, const std::string& author,
                                     const std::string& chapterTitle, int pageNumber, const std::string& selectedText) {
   if (!Storage.ensureDirectoryExists(CLIPPINGS_DIR)) {
@@ -41,6 +38,7 @@ bool ClippingsManager::saveClipping(const std::string& bookTitle, const std::str
   }
 
   const std::string clippingPath = clippingPathForBook(bookTitle, author);
+  const bool fileAlreadyExists = Storage.exists(clippingPath.c_str());
   HalFile file = Storage.open(clippingPath.c_str(), O_RDWR | O_CREAT | O_AT_END);
   if (!file) {
     LOG_ERR("CLIP", "Failed to open %s for append", clippingPath.c_str());
@@ -48,26 +46,28 @@ bool ClippingsManager::saveClipping(const std::string& bookTitle, const std::str
   }
 
   std::string fileHeader;
-  if (needsFileHeader(file)) {
+  if (!fileAlreadyExists) {
     fileHeader = bookTitle.empty() ? "book" : bookTitle;
     fileHeader += "\n";
     if (!author.empty()) {
       fileHeader += author;
       fileHeader += "\n";
     }
-    fileHeader += "\n==========\n\n";
+    fileHeader += "\n---\n\n";
   }
 
-  std::string location = "- Your Highlight on Page " + std::to_string(pageNumber);
+  std::string location;
   if (isMeaningfulChapterTitle(chapterTitle, bookTitle)) {
-    location += " | " + chapterTitle;
+    location = chapterTitle + " - Page " + std::to_string(pageNumber);
+  } else {
+    location = "Page " + std::to_string(pageNumber);
   }
   location += "\n\n";
 
   static constexpr size_t MAX_TEXT = 2000;
   const size_t textLen = selectedText.size() < MAX_TEXT ? selectedText.size() : MAX_TEXT;
 
-  static constexpr char separator[] = "\n\n==========\n\n";
+  static constexpr char separator[] = "\n\n---\n\n";
   static constexpr size_t separatorLen = sizeof(separator) - 1;
   const size_t totalLen = fileHeader.size() + location.size() + textLen + separatorLen;
 

@@ -12,7 +12,4 @@ class ClippingsManager {
                            int pageNumber, const std::string& selectedText);
 
   static constexpr const char* CLIPPINGS_DIR = "/clippings";
-
- private:
-  static bool needsFileHeader(HalFile& file);
 };
