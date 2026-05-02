@@ -17,6 +17,7 @@
 #include "CrossPointSettings.h"
 #include "OpdsServerStore.h"
 #include "SettingsList.h"
+#include "StringUtils.h"
 #include "WebDAVHandler.h"
 #include "html/FilesPageHtml.generated.h"
 #include "html/HomePageHtml.generated.h"
@@ -75,15 +76,29 @@ String normalizeWebPath(const String& inputPath) {
   return result;
 }
 
-bool isProtectedItemName(const String& name) {
-  if (name.startsWith(".")) {
-    return true;
-  }
-  for (size_t i = 0; i < HIDDEN_ITEMS_COUNT; i++) {
-    if (name.equals(HIDDEN_ITEMS[i])) {
-      return true;
+bool isProtectedPath(const String& path) {
+  // Check every segment of the path, not just the last one.
+  // This prevents access to e.g. /.hidden/somefile or /System Volume Information/foo
+  int start = 0;
+  while (start < (int)path.length()) {
+    if (path.charAt(start) == '/') {
+      start++;
+      continue;
     }
+    int end = path.indexOf('/', start);
+    if (end == -1) end = path.length();
+
+    String segment = path.substring(start, end);
+
+    if (segment.startsWith(".")) return true;
+
+    for (size_t i = 0; i < HIDDEN_ITEMS_COUNT; i++) {
+      if (segment.equals(HIDDEN_ITEMS[i])) return true;
+    }
+
+    start = end + 1;
   }
+
   return false;
 }
 }  // namespace
@@ -435,15 +450,12 @@ void CrossPointWebServer::handleFileListData() const {
   // Get current path from query string (default to root)
   String currentPath = "/";
   if (server->hasArg("path")) {
-    currentPath = server->arg("path");
-    // Ensure path starts with /
-    if (!currentPath.startsWith("/")) {
-      currentPath = "/" + currentPath;
-    }
-    // Remove trailing slash unless it's root
-    if (currentPath.length() > 1 && currentPath.endsWith("/")) {
-      currentPath = currentPath.substring(0, currentPath.length() - 1);
-    }
+    currentPath = normalizeWebPath(server->arg("path"));
+  }
+
+  if (isProtectedPath(currentPath)) {
+    server->send(403, "application/json", "[]");
+    return;
   }
 
   server->setContentLength(CONTENT_LENGTH_UNKNOWN);
@@ -487,25 +499,15 @@ void CrossPointWebServer::handleDownload() const {
     return;
   }
 
-  String itemPath = server->arg("path");
+  String itemPath = normalizeWebPath(server->arg("path"));
   if (itemPath.isEmpty() || itemPath == "/") {
     server->send(400, "text/plain", "Invalid path");
     return;
   }
-  if (!itemPath.startsWith("/")) {
-    itemPath = "/" + itemPath;
-  }
 
-  const String itemName = itemPath.substring(itemPath.lastIndexOf('/') + 1);
-  if (itemName.startsWith(".")) {
-    server->send(403, "text/plain", "Cannot access system files");
+  if (isProtectedPath(itemPath)) {
+    server->send(403, "text/plain", "Access denied to protected path");
     return;
-  }
-  for (size_t i = 0; i < HIDDEN_ITEMS_COUNT; i++) {
-    if (itemName.equals(HIDDEN_ITEMS[i])) {
-      server->send(403, "text/plain", "Cannot access protected items");
-      return;
-    }
   }
 
   if (!Storage.exists(itemPath.c_str())) {
@@ -607,7 +609,7 @@ void CrossPointWebServer::handleUpload(UploadState& state) const {
     // Reset watchdog - this is the critical 1% crash point
     esp_task_wdt_reset();
 
-    state.fileName = upload.filename;
+    state.fileName = StringUtils::sanitizeFilename(upload.filename.c_str()).c_str();
     state.size = 0;
     state.success = false;
     state.error = "";
@@ -621,15 +623,7 @@ void CrossPointWebServer::handleUpload(UploadState& state) const {
     // Note: We use query parameter instead of form data because multipart form
     // fields aren't available until after file upload completes
     if (server->hasArg("path")) {
-      state.path = server->arg("path");
-      // Ensure path starts with /
-      if (!state.path.startsWith("/")) {
-        state.path = "/" + state.path;
-      }
-      // Remove trailing slash unless it's root
-      if (state.path.length() > 1 && state.path.endsWith("/")) {
-        state.path = state.path.substring(0, state.path.length() - 1);
-      }
+      state.path = normalizeWebPath(server->arg("path"));
     } else {
       state.path = "/";
     }
@@ -641,6 +635,12 @@ void CrossPointWebServer::handleUpload(UploadState& state) const {
     String filePath = state.path;
     if (!filePath.endsWith("/")) filePath += "/";
     filePath += state.fileName;
+
+    if (isProtectedPath(filePath)) {
+      state.error = "Access denied to protected path";
+      LOG_DBG("WEB", "[UPLOAD] FAILED: Access denied to protected path: %s", filePath.c_str());
+      return;
+    }
 
     // Check if file already exists - SD operations can be slow
     esp_task_wdt_reset();
@@ -753,30 +753,29 @@ void CrossPointWebServer::handleCreateFolder() const {
     return;
   }
 
-  const String folderName = server->arg("name");
+  const String folderName = StringUtils::sanitizeFilename(server->arg("name").c_str()).c_str();
 
   // Validate folder name
-  if (folderName.isEmpty()) {
-    server->send(400, "text/plain", "Folder name cannot be empty");
+  if (folderName.isEmpty() || folderName == "book") {
+    server->send(400, "text/plain", "Invalid folder name");
     return;
   }
 
   // Get parent path
   String parentPath = "/";
   if (server->hasArg("path")) {
-    parentPath = server->arg("path");
-    if (!parentPath.startsWith("/")) {
-      parentPath = "/" + parentPath;
-    }
-    if (parentPath.length() > 1 && parentPath.endsWith("/")) {
-      parentPath = parentPath.substring(0, parentPath.length() - 1);
-    }
+    parentPath = normalizeWebPath(server->arg("path"));
   }
 
   // Build full folder path
   String folderPath = parentPath;
   if (!folderPath.endsWith("/")) folderPath += "/";
   folderPath += folderName;
+
+  if (isProtectedPath(folderPath)) {
+    server->send(403, "text/plain", "Access denied to protected path");
+    return;
+  }
 
   LOG_DBG("WEB", "Creating folder: %s", folderPath.c_str());
 
@@ -803,8 +802,7 @@ void CrossPointWebServer::handleRename() const {
   }
 
   String itemPath = normalizeWebPath(server->arg("path"));
-  String newName = server->arg("name");
-  newName.trim();
+  String newName = StringUtils::sanitizeFilename(server->arg("name").c_str()).c_str();
 
   if (itemPath.isEmpty() || itemPath == "/") {
     server->send(400, "text/plain", "Invalid path");
@@ -814,20 +812,28 @@ void CrossPointWebServer::handleRename() const {
     server->send(400, "text/plain", "New name cannot be empty");
     return;
   }
-  if (newName.indexOf('/') >= 0 || newName.indexOf('\\') >= 0) {
-    server->send(400, "text/plain", "Invalid file name");
+  if (isProtectedPath(itemPath)) {
+    server->send(403, "text/plain", "Cannot rename protected item");
     return;
   }
-  if (isProtectedItemName(newName)) {
-    server->send(403, "text/plain", "Cannot rename to protected name");
+
+  // Calculate new path to check if it's protected
+  String parentPath = itemPath.substring(0, itemPath.lastIndexOf('/'));
+  if (parentPath.isEmpty()) {
+    parentPath = "/";
+  }
+  String newPath = parentPath;
+  if (!newPath.endsWith("/")) {
+    newPath += "/";
+  }
+  newPath += newName;
+
+  if (isProtectedPath(newPath)) {
+    server->send(403, "text/plain", "Cannot rename to protected path");
     return;
   }
 
   const String itemName = itemPath.substring(itemPath.lastIndexOf('/') + 1);
-  if (isProtectedItemName(itemName)) {
-    server->send(403, "text/plain", "Cannot rename protected item");
-    return;
-  }
   if (newName == itemName) {
     server->send(200, "text/plain", "Name unchanged");
     return;
@@ -848,16 +854,6 @@ void CrossPointWebServer::handleRename() const {
     server->send(400, "text/plain", "Only files can be renamed");
     return;
   }
-
-  String parentPath = itemPath.substring(0, itemPath.lastIndexOf('/'));
-  if (parentPath.isEmpty()) {
-    parentPath = "/";
-  }
-  String newPath = parentPath;
-  if (!newPath.endsWith("/")) {
-    newPath += "/";
-  }
-  newPath += newName;
 
   if (Storage.exists(newPath.c_str())) {
     file.close();
@@ -896,18 +892,16 @@ void CrossPointWebServer::handleMove() const {
     return;
   }
 
-  const String itemName = itemPath.substring(itemPath.lastIndexOf('/') + 1);
-  if (isProtectedItemName(itemName)) {
+  if (isProtectedPath(itemPath)) {
     server->send(403, "text/plain", "Cannot move protected item");
     return;
   }
-  if (destPath != "/") {
-    const String destName = destPath.substring(destPath.lastIndexOf('/') + 1);
-    if (isProtectedItemName(destName)) {
-      server->send(403, "text/plain", "Cannot move into protected folder");
-      return;
-    }
+  if (isProtectedPath(destPath)) {
+    server->send(403, "text/plain", "Cannot move into protected folder");
+    return;
   }
+
+  const String itemName = itemPath.substring(itemPath.lastIndexOf('/') + 1);
 
   if (!Storage.exists(itemPath.c_str())) {
     server->send(404, "text/plain", "Item not found");
@@ -1028,25 +1022,8 @@ void CrossPointWebServer::handleDelete() const {
     }
 
     // Security check: prevent deletion of protected items
-    const String itemName = itemPath.substring(itemPath.lastIndexOf('/') + 1);
-
-    // Hidden/system files are protected
-    if (itemName.startsWith(".")) {
-      failedItems += itemPath + " (hidden/system file); ";
-      allSuccess = false;
-      continue;
-    }
-
-    // Check against explicitly protected items
-    bool isProtected = false;
-    for (size_t i = 0; i < HIDDEN_ITEMS_COUNT; i++) {
-      if (itemName.equals(HIDDEN_ITEMS[i])) {
-        isProtected = true;
-        break;
-      }
-    }
-    if (isProtected) {
-      failedItems += itemPath + " (protected file); ";
+    if (isProtectedPath(itemPath)) {
+      failedItems += itemPath + " (protected path); ";
       allSuccess = false;
       continue;
     }
@@ -1420,7 +1397,7 @@ void CrossPointWebServer::onWebSocketEvent(uint8_t num, WStype_t type, uint8_t* 
         int secondColon = msg.indexOf(':', firstColon + 1);
 
         if (firstColon > 0 && secondColon > 0) {
-          wsUploadFileName = msg.substring(6, firstColon);
+          wsUploadFileName = StringUtils::sanitizeFilename(msg.substring(6, firstColon).c_str()).c_str();
           String sizeToken = msg.substring(firstColon + 1, secondColon);
           bool sizeValid = sizeToken.length() > 0;
           int digitStart = (sizeValid && sizeToken[0] == '+') ? 1 : 0;
@@ -1434,21 +1411,22 @@ void CrossPointWebServer::onWebSocketEvent(uint8_t num, WStype_t type, uint8_t* 
             return;
           }
           wsUploadSize = sizeToken.toInt();
-          wsUploadPath = msg.substring(secondColon + 1);
+          wsUploadPath = normalizeWebPath(msg.substring(secondColon + 1));
           wsUploadReceived = 0;
           wsLastProgressSent = 0;
           wsUploadStartTime = millis();
-
-          // Ensure path is valid
-          if (!wsUploadPath.startsWith("/")) wsUploadPath = "/" + wsUploadPath;
-          if (wsUploadPath.length() > 1 && wsUploadPath.endsWith("/")) {
-            wsUploadPath = wsUploadPath.substring(0, wsUploadPath.length() - 1);
-          }
 
           // Build file path
           String filePath = wsUploadPath;
           if (!filePath.endsWith("/")) filePath += "/";
           filePath += wsUploadFileName;
+
+          if (isProtectedPath(filePath)) {
+            wsServer->sendTXT(num, "ERROR:Access denied to protected path");
+            wsUploadInProgress = false;
+            wsUploadClientNum = 255;
+            return;
+          }
 
           LOG_DBG("WS", "Starting upload: %s (%d bytes) to %s", wsUploadFileName.c_str(), wsUploadSize,
                   filePath.c_str());
