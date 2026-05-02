@@ -612,25 +612,37 @@ void SleepActivity::renderOverlaySleepScreen() const {
   renderer.setOrientation(GfxRenderer::Portrait);
   const auto pageWidth = renderer.getScreenWidth();
   const auto pageHeight = renderer.getScreenHeight();
+  const auto& path = APP_STATE.openEpubPath;
+
+  auto renderSavedReaderPage = [&]() -> bool {
+    if (path.empty()) {
+      return false;
+    }
+
+    if (FsHelpers::checkFileExtension(path, ".xtc") || FsHelpers::checkFileExtension(path, ".xtch")) {
+      return XtcReaderActivity::drawCurrentPageToBuffer(path, renderer);
+    }
+    if (FsHelpers::checkFileExtension(path, ".txt")) {
+      return TxtReaderActivity::drawCurrentPageToBuffer(path, renderer);
+    }
+    if (FsHelpers::checkFileExtension(path, ".epub")) {
+      return EpubReaderActivity::drawCurrentPageToBuffer(path, renderer);
+    }
+    return false;
+  };
+  const bool backgroundSupportsGrayscale =
+      FsHelpers::checkFileExtension(path, ".txt") || FsHelpers::checkFileExtension(path, ".epub");
+  bool backgroundWasRebuilt = false;
 
   // Step 1: Ensure the frame buffer contains only the reader page.
   // When sleeping from the reader, restore the page snapshot taken before the
   // popup was drawn. Otherwise, rebuild from the saved position.
   if (overlayPageBufferTrusted) {
     renderer.restoreBwBuffer();
-  } else if (!APP_STATE.openEpubPath.empty()) {
-    const auto& path = APP_STATE.openEpubPath;
-    bool rendered = false;
+  } else if (!path.empty()) {
+    backgroundWasRebuilt = renderSavedReaderPage();
 
-    if (FsHelpers::checkFileExtension(path, ".xtc") || FsHelpers::checkFileExtension(path, ".xtch")) {
-      rendered = XtcReaderActivity::drawCurrentPageToBuffer(path, renderer);
-    } else if (FsHelpers::checkFileExtension(path, ".txt")) {
-      rendered = TxtReaderActivity::drawCurrentPageToBuffer(path, renderer);
-    } else if (FsHelpers::checkFileExtension(path, ".epub")) {
-      rendered = EpubReaderActivity::drawCurrentPageToBuffer(path, renderer);
-    }
-
-    if (!rendered) {
+    if (!backgroundWasRebuilt) {
       if (overlayPageBufferStored) {
         LOG_DBG("SLP", "Page re-render failed, using captured screen as overlay fallback");
         renderer.restoreBwBuffer();
@@ -791,5 +803,38 @@ void SleepActivity::renderOverlaySleepScreen() const {
   }
 
   renderer.setOrientation(savedOrientation);
-  renderer.displayBuffer(HalDisplay::HALF_REFRESH, TURN_OFF_SCREEN_AFTER_SLEEP_REFRESH);
+  const bool shouldRunGrayscalePass =
+      backgroundSupportsGrayscale && (backgroundWasRebuilt || (overlayPageBufferTrusted && !path.empty()));
+  renderer.displayBuffer(HalDisplay::HALF_REFRESH, !shouldRunGrayscalePass && TURN_OFF_SCREEN_AFTER_SLEEP_REFRESH);
+
+  if (!shouldRunGrayscalePass) {
+    return;
+  }
+
+  if (!renderer.storeBwBuffer()) {
+    LOG_ERR("SLP", "Overlay: failed to store BW buffer for grayscale pass");
+    return;
+  }
+
+  renderer.setRenderMode(GfxRenderer::GRAYSCALE_LSB);
+  if (!renderSavedReaderPage()) {
+    LOG_ERR("SLP", "Overlay: failed to rebuild page for grayscale LSB pass");
+    renderer.setRenderMode(GfxRenderer::BW);
+    renderer.restoreBwBuffer();
+    return;
+  }
+  renderer.copyGrayscaleLsbBuffers();
+
+  renderer.setRenderMode(GfxRenderer::GRAYSCALE_MSB);
+  if (!renderSavedReaderPage()) {
+    LOG_ERR("SLP", "Overlay: failed to rebuild page for grayscale MSB pass");
+    renderer.setRenderMode(GfxRenderer::BW);
+    renderer.restoreBwBuffer();
+    return;
+  }
+  renderer.copyGrayscaleMsbBuffers();
+
+  renderer.displayGrayBuffer(TURN_OFF_SCREEN_AFTER_SLEEP_REFRESH);
+  renderer.setRenderMode(GfxRenderer::BW);
+  renderer.restoreBwBuffer();
 }
