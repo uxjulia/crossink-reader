@@ -1028,29 +1028,38 @@ void EpubReaderActivity::showCompletedFeedback(bool isCompleted) {
 }
 
 void EpubReaderActivity::applyOrientation(const uint8_t orientation) {
-  // No-op if the selected orientation matches current settings.
-  if (SETTINGS.orientation == orientation) {
+  const auto targetOrientation = ReaderUtils::toRendererOrientation(orientation);
+  const bool settingsChanged = SETTINGS.orientation != orientation;
+  const bool rendererChanged = renderer.getOrientation() != targetOrientation;
+
+  // No-op only when both the persisted setting and the live renderer already match.
+  if (!settingsChanged && !rendererChanged) {
     return;
   }
 
-  // Preserve current reading position so we can restore after reflow.
   {
     RenderLock lock(*this);
-    if (section) {
+
+    // Preserve current reading position only when we need a live re-layout.
+    if (rendererChanged && section) {
       cachedSpineIndex = currentSpineIndex;
       cachedChapterTotalPageCount = section->pageCount;
       nextPageNumber = section->currentPage;
     }
 
-    // Persist the selection so the reader keeps the new orientation on next launch.
-    SETTINGS.orientation = orientation;
-    SETTINGS.saveToFile();
+    if (settingsChanged) {
+      // Persist the selection so the reader keeps the new orientation on next launch.
+      SETTINGS.orientation = orientation;
+      SETTINGS.saveToFile();
+    }
 
-    // Update renderer orientation to match the new logical coordinate system.
-    ReaderUtils::applyOrientation(renderer, SETTINGS.orientation);
+    if (rendererChanged) {
+      // Update renderer orientation to match the new logical coordinate system.
+      renderer.setOrientation(targetOrientation);
 
-    // Reset section to force re-layout in the new orientation.
-    section.reset();
+      // Reset section to force re-layout in the new orientation.
+      section.reset();
+    }
   }
 }
 
